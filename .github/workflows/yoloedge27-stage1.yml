@@ -1,4 +1,4 @@
-# Trigger: YOLOEdge27 Stage-1 baseline 50e
+# Trigger: YOLOEdge27 Stage-1 baseline 50e retry after pytest isolation
 name: YOLOEdge27 Stage1 Screening
 
 on:
@@ -109,6 +109,12 @@ jobs:
 
       - name: Unit tests
         shell: bash
+        env:
+          # The runner also contains ROS2 launch_testing, whose legacy pytest
+          # plugin is incompatible with the pytest version installed for this
+          # project. These SPR-Down unit tests need no external pytest plugins,
+          # so isolate pytest from site-wide entry-point plugins.
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
         run: |
           set -euo pipefail
           "$PYTHON_BIN" -m pytest -q tests/test_sprdown.py
