@@ -1,0 +1,6 @@
+preset=reg4
+epochs=50
+persistent_root=/home/minh/visdrone_experiments/screening/reg4_50e
+best_pt=/home/minh/visdrone_experiments/screening/reg4_50e/runs/aconv_reg4_ciou75_nwd25_attn-none_50e_seed42/weights/best.pt
+results_csv=/home/minh/visdrone_experiments/screening/reg4_50e/runs/aconv_reg4_ciou75_nwd25_attn-none_50e_seed42/results.csv
+eval_json=/home/minh/visdrone_experiments/screening/reg4_50e/outputs/reg4_50e_eval.json
