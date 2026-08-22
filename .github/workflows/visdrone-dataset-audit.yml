@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   audit:
@@ -39,13 +39,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p reports
           "$PYTHON_BIN" scripts/audit_dataset.py \
             --root "$DATASET" \
-            --json /tmp/visdrone_dataset_audit.json \
-            --md /tmp/visdrone_dataset_audit.md
+            --json reports/dataset_audit.json \
+            --md reports/dataset_audit.md
 
-      - name: Print report paths
+      - name: Save audit report to branch
         shell: bash
         run: |
-          echo "JSON: /tmp/visdrone_dataset_audit.json"
-          echo "Markdown: /tmp/visdrone_dataset_audit.md"
+          set -euo pipefail
+          git config user.name "visdrone-runner"
+          git config user.email "actions@users.noreply.github.com"
+          git add reports/dataset_audit.json reports/dataset_audit.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Update official VisDrone dataset audit"
+            git push origin HEAD:setup/gpu-runner-test
+          fi
