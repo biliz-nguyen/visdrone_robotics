@@ -1,0 +1,174 @@
+name: YOLOEdge27 Stage1 Eval Existing
+
+on:
+  push:
+    branches:
+      - research/yoloedge27-sprdown-v1
+    paths:
+      - .github/workflows/yoloedge27-stage1-eval-existing.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  eval-existing:
+    runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
+    timeout-minutes: 120
+    env:
+      CUDA_VISIBLE_DEVICES: "0"
+      PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
+      DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
+      PRESET: edge27_spr_v1
+      EPOCHS: "50"
+
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+
+      - name: Pre-flight
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Eval existing checkpoint only: $PRESET ${EPOCHS}e"
+          "$PYTHON_BIN" -c "import torch; assert torch.cuda.is_available(); print(torch.__version__, torch.cuda.get_device_name(0))"
+          test -d "$DATASET/VisDrone2019-DET-val/images"
+
+      - name: Write runner-local config
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/home/minh/yoloedge27_experiments/stage1/${PRESET}_${EPOCHS}e"
+          mkdir -p "$ROOT/runs" "$ROOT/state" "$ROOT/outputs" "$ROOT/generated"
+          cat > config/local.yaml <<EOF
+          dataset_root: "$DATASET"
+          dataset_format: "visdrone_official"
+          train_images: "VisDrone2019-DET-train/images"
+          train_annotations: "VisDrone2019-DET-train/annotations"
+          val_images: "VisDrone2019-DET-val/images"
+          val_annotations: "VisDrone2019-DET-val/annotations"
+          test_images: "VisDrone2019-DET-test-dev/images"
+          test_annotations: "VisDrone2019-DET-test-dev/annotations"
+          test_image: ""
+          runs_dir: "$ROOT/runs"
+          state_dir: "$ROOT/state"
+          outputs_dir: "$ROOT/outputs"
+          generated_dir: "$ROOT/generated"
+          EOF
+
+      - name: Setup dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON_BIN="$PYTHON_BIN" bash setup_local.sh
+
+      - name: Set Stage-1 protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import os, yaml
+          p = Path('config/experiment.yaml')
+          c = yaml.safe_load(p.read_text())
+          c['preset'] = os.environ['PRESET']
+          c['train']['epochs'] = int(os.environ['EPOCHS'])
+          c['train']['batch'] = 8
+          c['train']['nbs'] = 16
+          c['train']['save_period'] = 10
+          c['train']['patience'] = 0
+          c['pretrained'] = False
+          p.write_text(yaml.safe_dump(c, sort_keys=False), encoding='utf-8')
+          PY
+
+      - name: Architecture sanity
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/sanity.py
+
+      - name: Locate existing best checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/home/minh/yoloedge27_experiments/stage1/${PRESET}_${EPOCHS}e"
+          BEST=$(ROOT="$ROOT" "$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ['ROOT'])
+          candidates = list(root.glob('runs/*/weights/best.pt'))
+          if not candidates:
+              raise SystemExit(f'No best.pt found under {root}/runs')
+          print(max(candidates, key=lambda p: p.stat().st_mtime))
+          PY
+          )
+          test -f "$BEST"
+          echo "BEST=$BEST" >> "$GITHUB_ENV"
+          echo "Found checkpoint: $BEST"
+
+      - name: Evaluate existing checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/home/minh/yoloedge27_experiments/stage1/${PRESET}_${EPOCHS}e"
+          "$PYTHON_BIN" scripts/eval_screening.py \
+            --weights "$BEST" \
+            --output "$ROOT/outputs/${PRESET}_${EPOCHS}e_eval.json"
+
+      - name: Save compact report
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/home/minh/yoloedge27_experiments/stage1/${PRESET}_${EPOCHS}e"
+          REPORT_DIR="reports/yoloedge27/stage1"
+          mkdir -p "$REPORT_DIR"
+
+          RESULTS=$(ROOT="$ROOT" "$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ['ROOT'])
+          candidates = list(root.glob('runs/*/results.csv'))
+          if not candidates:
+              raise SystemExit(f'No results.csv found under {root}/runs')
+          print(max(candidates, key=lambda p: p.stat().st_mtime))
+          PY
+          )
+
+          ARGS=$(ROOT="$ROOT" "$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ['ROOT'])
+          candidates = list(root.glob('runs/*/args.yaml'))
+          if not candidates:
+              raise SystemExit(f'No args.yaml found under {root}/runs')
+          print(max(candidates, key=lambda p: p.stat().st_mtime))
+          PY
+          )
+
+          EVAL="$ROOT/outputs/${PRESET}_${EPOCHS}e_eval.json"
+          test -f "$RESULTS"
+          test -f "$ARGS"
+          test -f "$BEST"
+          test -f "$EVAL"
+
+          cp "$RESULTS" "$REPORT_DIR/${PRESET}_${EPOCHS}e_results.csv"
+          cp "$ARGS" "$REPORT_DIR/${PRESET}_${EPOCHS}e_args.yaml"
+          cp "$EVAL" "$REPORT_DIR/${PRESET}_${EPOCHS}e_eval.json"
+          {
+            echo "preset=$PRESET"
+            echo "epochs=$EPOCHS"
+            echo "mode=eval_existing"
+            echo "persistent_root=$ROOT"
+            echo "best_pt=$BEST"
+            echo "results_csv=$RESULTS"
+            echo "eval_json=$EVAL"
+            echo "note=local pre-screen; final paper metrics must be rerun on Kaggle"
+          } > "$REPORT_DIR/${PRESET}_${EPOCHS}e_paths.txt"
+
+          git config user.name "yoloedge27-runner"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$REPORT_DIR"
+          if ! git diff --cached --quiet; then
+            git commit -m "Record YOLOEdge27 ${PRESET} ${EPOCHS}e eval-only results"
+            git push origin HEAD:research/yoloedge27-sprdown-v1
+          fi
