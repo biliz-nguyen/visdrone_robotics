@@ -1,4 +1,4 @@
-# Trigger: reg4_eca 50e
+# Trigger: reg4_ca 50e
 name: VisDrone Screening
 
 on:
@@ -12,7 +12,7 @@ on:
       preset:
         description: "Experiment preset"
         required: true
-        default: "reg4_eca"
+        default: "reg4_ca"
         type: choice
         options:
           - baseline
@@ -43,7 +43,7 @@ jobs:
       CUDA_VISIBLE_DEVICES: "0"
       PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
       DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
-      PRESET: ${{ github.event.inputs.preset || 'reg4_eca' }}
+      PRESET: ${{ github.event.inputs.preset || 'reg4_ca' }}
       EPOCHS: ${{ github.event.inputs.epochs || '50' }}
 
     steps:
