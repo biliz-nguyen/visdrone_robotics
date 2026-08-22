@@ -70,6 +70,12 @@ def main():
         if m.__class__.__name__ == "AConv"
     ]
 
+    sprdowns = [
+        m
+        for m in model.model.modules()
+        if m.__class__.__name__ == "SPRDown"
+    ]
+
     attn_names = {
         "ECA",
         "CoordAtt",
@@ -85,8 +91,13 @@ def main():
 
     if cfg["backbone_down"] == "aconv":
         assert len(aconvs) == 1
+        assert len(sprdowns) == 0
+    elif cfg["backbone_down"] == "sprdown":
+        assert len(sprdowns) == 1
+        assert len(aconvs) == 0
     else:
         assert len(aconvs) == 0
+        assert len(sprdowns) == 0
 
     if cfg["attention"] == "none":
         assert len(attn_modules) == 0
@@ -105,6 +116,19 @@ def main():
             .__class__
             .__name__
         ) == expected_class
+
+    # Q1 Stage-1 contract: SPR-Down must be isolated from legacy blocks.
+    if cfg["backbone_down"] == "sprdown":
+        assert cfg["loss_mode"] == "standard", (
+            "SPR-Down v1 screening must use standard localization loss "
+            "to isolate the architectural contribution."
+        )
+        assert int(cfg["reg_max"]) == 16, (
+            "SPR-Down v1 screening must keep reg_max=16."
+        )
+        assert cfg["attention"] == "none", (
+            "SPR-Down v1 screening must not use attention."
+        )
 
     params = sum(
         p.numel()
@@ -167,7 +191,7 @@ def main():
         cfg["experiment_tag"],
     )
     print(
-        "Backbone:",
+        "Backbone downsample:",
         cfg["backbone_down"],
     )
     print(
@@ -179,6 +203,7 @@ def main():
         detect.no,
     )
     print("Strides:", strides)
+    print("SPRDown count:", len(sprdowns))
     print("AConv count:", len(aconvs))
     print(
         "Attention:",
