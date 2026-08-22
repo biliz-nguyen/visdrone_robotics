@@ -1,0 +1,8 @@
+preset=edge27_spr_v1
+epochs=50
+mode=eval_existing
+persistent_root=/home/minh/yoloedge27_experiments/stage1/edge27_spr_v1_50e
+best_pt=/home/minh/yoloedge27_experiments/stage1/edge27_spr_v1_50e/runs/sprdown_reg16_standard_attn-none_50e_seed42/weights/best.pt
+results_csv=/home/minh/yoloedge27_experiments/stage1/edge27_spr_v1_50e/runs/sprdown_reg16_standard_attn-none_50e_seed42/results.csv
+eval_json=/home/minh/yoloedge27_experiments/stage1/edge27_spr_v1_50e/outputs/edge27_spr_v1_50e_eval.json
+note=local pre-screen; final paper metrics must be rerun on Kaggle
