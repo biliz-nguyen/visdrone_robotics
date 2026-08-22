@@ -1,16 +1,20 @@
 # ============================================================
 # LOCAL MACHINE ONLY
-# Gemini/user only needs to edit this file.
 # Copy to: config/local.yaml
 # ============================================================
 
 dataset_root: "/ABSOLUTE/PATH/TO/VISDRONE_DATASET"
+dataset_format: "visdrone_official"
 
-# Paths below are relative to dataset_root.
-# Change these only if your downloaded dataset uses other names.
-train_images: "train/images"
-val_images: "valid/images"
-test_images: "test/images"
+# Official VisDrone2019-DET layout, relative to dataset_root.
+train_images: "VisDrone2019-DET-train/images"
+train_annotations: "VisDrone2019-DET-train/annotations"
+
+val_images: "VisDrone2019-DET-val/images"
+val_annotations: "VisDrone2019-DET-val/annotations"
+
+test_images: "VisDrone2019-DET-test-dev/images"
+test_annotations: "VisDrone2019-DET-test-dev/annotations"
 
 # Optional explicit image for scripts/infer.py.
 # Leave empty to automatically choose the first test image.
