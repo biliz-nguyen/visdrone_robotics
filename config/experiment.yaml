@@ -50,8 +50,8 @@ presets:
 train:
   imgsz: 640
   epochs: 50       # screening=50, final=100
-  batch: 16
-  nbs: 16
+  batch: 8         # avoids TaskAlignedAssigner OOM on RTX 4060 Ti 16GB
+  nbs: 16          # keep nominal/effective batch consistent across experiments
   workers: 4
 
   optimizer: "AdamW"
