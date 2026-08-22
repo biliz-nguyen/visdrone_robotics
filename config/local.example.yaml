@@ -1,0 +1,17 @@
+# ============================================================
+# LOCAL MACHINE ONLY
+# Gemini/user only needs to edit this file.
+# Copy to: config/local.yaml
+# ============================================================
+
+dataset_root: "/ABSOLUTE/PATH/TO/VISDRONE_DATASET"
+
+# Paths below are relative to dataset_root.
+# Change these only if your downloaded dataset uses other names.
+train_images: "train/images"
+val_images: "valid/images"
+test_images: "test/images"
+
+# Optional explicit image for scripts/infer.py.
+# Leave empty to automatically choose the first test image.
+test_image: ""

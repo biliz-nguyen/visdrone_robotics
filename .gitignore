@@ -1,0 +1,34 @@
+config/local.yaml
+third_party/
+generated/
+runs/
+state/*.json
+outputs/*
+!outputs/.gitkeep
+__pycache__/
+*.pyc
+.venv/
+
+# Datasets
+data/
+dataset/
+datasets/
+
+# Model checkpoints / exported models
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.engine
+*.tflite
+
+# Experiment logs
+wandb/
+mlruns/
+tensorboard/
+*.log
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/

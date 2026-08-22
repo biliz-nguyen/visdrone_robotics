@@ -1,0 +1,5 @@
+PyYAML>=6.0
+matplotlib>=3.7
+thop>=0.1.1
+onnx>=1.15
+onnxslim>=0.1.31
