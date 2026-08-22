@@ -1,0 +1,6 @@
+preset=baseline
+epochs=50
+persistent_root=/home/minh/visdrone_experiments/screening/baseline_50e
+best_pt=/home/minh/visdrone_experiments/screening/baseline_50e/runs/conv_reg16_standard_attn-none_50e_seed42_r2/weights/best.pt
+results_csv=/home/minh/visdrone_experiments/screening/baseline_50e/runs/conv_reg16_standard_attn-none_50e_seed42_r2/results.csv
+eval_json=/home/minh/visdrone_experiments/screening/baseline_50e/outputs/baseline_50e_eval.json
