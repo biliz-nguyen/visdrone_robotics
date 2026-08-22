@@ -1,0 +1,150 @@
+name: VisDrone Screening
+
+on:
+  push:
+    branches:
+      - setup/gpu-runner-test
+    paths:
+      - .github/workflows/visdrone-screening.yml
+  workflow_dispatch:
+    inputs:
+      preset:
+        description: "Experiment preset"
+        required: true
+        default: "baseline"
+        type: choice
+        options:
+          - baseline
+          - reg4
+          - reg4_eca
+          - reg8
+          - reg4_ca
+          - reg4_rlca
+      epochs:
+        description: "Number of epochs"
+        required: true
+        default: "50"
+        type: choice
+        options:
+          - "5"
+          - "10"
+          - "50"
+          - "100"
+
+permissions:
+  contents: write
+
+jobs:
+  screening:
+    runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
+    timeout-minutes: 720
+    env:
+      CUDA_VISIBLE_DEVICES: "0"
+      PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
+      DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
+      PRESET: ${{ github.event.inputs.preset || 'baseline' }}
+      EPOCHS: ${{ github.event.inputs.epochs || '50' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Pre-flight
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Preset=$PRESET Epochs=$EPOCHS"
+          nvidia-smi
+          "$PYTHON_BIN" -c "import torch; print('Torch:', torch.__version__); print('CUDA:', torch.version.cuda); print('Available:', torch.cuda.is_available()); assert torch.cuda.is_available(); print('GPU:', torch.cuda.get_device_name(0))"
+          test -d "$DATASET/VisDrone2019-DET-train/images"
+          test -d "$DATASET/VisDrone2019-DET-val/images"
+
+      - name: Write local config
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/home/minh/visdrone_experiments/screening/${PRESET}_${EPOCHS}e"
+          mkdir -p "$ROOT/runs" "$ROOT/state" "$ROOT/outputs" "$ROOT/generated"
+          cat > config/local.yaml <<EOF
+          dataset_root: "$DATASET"
+          dataset_format: "visdrone_official"
+          train_images: "VisDrone2019-DET-train/images"
+          train_annotations: "VisDrone2019-DET-train/annotations"
+          val_images: "VisDrone2019-DET-val/images"
+          val_annotations: "VisDrone2019-DET-val/annotations"
+          test_images: "VisDrone2019-DET-test-dev/images"
+          test_annotations: "VisDrone2019-DET-test-dev/annotations"
+          test_image: ""
+          runs_dir: "$ROOT/runs"
+          state_dir: "$ROOT/state"
+          outputs_dir: "$ROOT/outputs"
+          generated_dir: "$ROOT/generated"
+          EOF
+          echo "Persistent root: $ROOT"
+
+      - name: Setup dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON_BIN="$PYTHON_BIN" bash setup_local.sh
+
+      - name: Set screening protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import os, yaml
+          p = Path('config/experiment.yaml')
+          c = yaml.safe_load(p.read_text())
+          c['preset'] = os.environ['PRESET']
+          c['train']['epochs'] = int(os.environ['EPOCHS'])
+          c['train']['batch'] = 8
+          c['train']['nbs'] = 16
+          c['train']['save_period'] = 10
+          c['train']['patience'] = 0
+          c['pretrained'] = False
+          p.write_text(yaml.safe_dump(c, sort_keys=False), encoding='utf-8')
+          print(p.read_text())
+          PY
+
+      - name: Architecture sanity
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/sanity.py
+
+      - name: Train screening model
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/train.py
+
+      - name: Save compact screening report
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/home/minh/visdrone_experiments/screening/${PRESET}_${EPOCHS}e"
+          mkdir -p reports/screening
+          RESULTS=$(find "$ROOT/runs" -type f -name results.csv -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          ARGS=$(find "$ROOT/runs" -type f -name args.yaml -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          BEST=$(find "$ROOT/runs" -type f -path '*/weights/best.pt' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          test -n "$RESULTS"
+          cp "$RESULTS" "reports/screening/${PRESET}_${EPOCHS}e_results.csv"
+          cp "$ARGS" "reports/screening/${PRESET}_${EPOCHS}e_args.yaml"
+          {
+            echo "preset=$PRESET"
+            echo "epochs=$EPOCHS"
+            echo "persistent_root=$ROOT"
+            echo "best_pt=$BEST"
+            echo "results_csv=$RESULTS"
+          } > "reports/screening/${PRESET}_${EPOCHS}e_paths.txt"
+
+          git config user.name "visdrone-runner"
+          git config user.email "actions@users.noreply.github.com"
+          git add reports/screening/
+          if ! git diff --cached --quiet; then
+            git commit -m "Record ${PRESET} ${EPOCHS}e screening results"
+            git push origin HEAD:setup/gpu-runner-test
+          fi
