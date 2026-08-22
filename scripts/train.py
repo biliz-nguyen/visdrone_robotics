@@ -41,15 +41,23 @@ def main():
     t = cfg["train"]
     run_name = unique_run_name(cfg)
 
-    if (
-        torch.cuda.is_available()
-        and torch.cuda.device_count() >= 2
-    ):
+    print("Torch:", torch.__version__)
+    print("Torch CUDA:", torch.version.cuda)
+    print("CUDA available:", torch.cuda.is_available())
+    print("CUDA device count:", torch.cuda.device_count())
+
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            "CUDA is required for VisDrone training on this runner; "
+            "refusing to fall back to CPU."
+        )
+
+    if torch.cuda.device_count() >= 2:
         device = [0, 1]
-    elif torch.cuda.is_available():
-        device = 0
     else:
-        device = "cpu"
+        device = 0
+
+    print("GPU:", torch.cuda.get_device_name(0))
 
     print("=" * 90)
     print("START TRAIN")
@@ -195,9 +203,7 @@ def main():
 
     del model
     gc.collect()
-
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+    torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
