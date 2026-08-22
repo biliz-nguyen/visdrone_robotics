@@ -1,0 +1,32 @@
+name: GPU Runner Test
+
+on:
+  push:
+    branches:
+      - setup/gpu-runner-test
+  workflow_dispatch:
+
+jobs:
+  gpu-test:
+    runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show host and GPU
+        shell: bash
+        run: |
+          echo "HOSTNAME=$(hostname)"
+          nvidia-smi
+
+      - name: Verify PyTorch CUDA in torch251
+        shell: bash
+        run: |
+          /home/minh/miniconda3/bin/conda run -n torch251 python -c "import torch; print('Torch:', torch.__version__); print('CUDA available:', torch.cuda.is_available()); print('Torch CUDA:', torch.version.cuda); print('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'NONE'); assert torch.cuda.is_available(), 'CUDA is not available'"
+
+      - name: CUDA matrix smoke test
+        shell: bash
+        run: |
+          /home/minh/miniconda3/bin/conda run -n torch251 python -c "import torch; x=torch.randn(2048,2048,device='cuda'); y=x@x; torch.cuda.synchronize(); print('Matrix result:', tuple(y.shape)); print('Allocated MiB:', round(torch.cuda.memory_allocated()/1024**2,2))"
