@@ -77,7 +77,7 @@ def _patch_tasks(tasks_py: Path) -> None:
 
     import_line = (
         "from ultralytics.nn.modules.visdrone_custom_blocks "
-        "import AConv, ECA, CoordAtt, ResidualLiteCA"
+        "import SPRDown, AConv, ECA, CoordAtt, ResidualLiteCA"
     )
 
     if import_line not in text:
@@ -110,6 +110,7 @@ def _patch_tasks(tasks_py: Path) -> None:
     body = base_match.group("body")
 
     needed = [
+        "SPRDown",
         "AConv",
         "ECA",
         "CoordAtt",
