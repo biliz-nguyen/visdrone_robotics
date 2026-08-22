@@ -1,0 +1,192 @@
+# Trigger: YOLOEdge27 Stage-1 baseline 50e
+name: YOLOEdge27 Stage1 Screening
+
+on:
+  push:
+    branches:
+      - research/yoloedge27-sprdown-v1
+    paths:
+      - .github/workflows/yoloedge27-stage1.yml
+  workflow_dispatch:
+    inputs:
+      preset:
+        description: "Stage-1 preset"
+        required: true
+        default: "edge27_baseline"
+        type: choice
+        options:
+          - edge27_baseline
+          - edge27_spr_v1
+      epochs:
+        description: "Epochs"
+        required: true
+        default: "50"
+        type: choice
+        options:
+          - "1"
+          - "5"
+          - "50"
+          - "100"
+
+permissions:
+  contents: write
+
+jobs:
+  stage1-screening:
+    runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
+    timeout-minutes: 720
+    env:
+      CUDA_VISIBLE_DEVICES: "0"
+      PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
+      DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
+      PRESET: ${{ github.event.inputs.preset || 'edge27_baseline' }}
+      EPOCHS: ${{ github.event.inputs.epochs || '50' }}
+
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+
+      - name: Pre-flight
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "YOLOEdge27 Stage1 preset=$PRESET epochs=$EPOCHS"
+          nvidia-smi
+          "$PYTHON_BIN" -c "import torch; print('Torch:', torch.__version__); print('CUDA:', torch.version.cuda); print('Available:', torch.cuda.is_available()); assert torch.cuda.is_available(); print('GPU:', torch.cuda.get_device_name(0))"
+          test -d "$DATASET/VisDrone2019-DET-train/images"
+          test -d "$DATASET/VisDrone2019-DET-val/images"
+
+      - name: Write runner-local config
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/home/minh/yoloedge27_experiments/stage1/${PRESET}_${EPOCHS}e"
+          mkdir -p "$ROOT/runs" "$ROOT/state" "$ROOT/outputs" "$ROOT/generated"
+          cat > config/local.yaml <<EOF
+          dataset_root: "$DATASET"
+          dataset_format: "visdrone_official"
+          train_images: "VisDrone2019-DET-train/images"
+          train_annotations: "VisDrone2019-DET-train/annotations"
+          val_images: "VisDrone2019-DET-val/images"
+          val_annotations: "VisDrone2019-DET-val/annotations"
+          test_images: "VisDrone2019-DET-test-dev/images"
+          test_annotations: "VisDrone2019-DET-test-dev/annotations"
+          test_image: ""
+          runs_dir: "$ROOT/runs"
+          state_dir: "$ROOT/state"
+          outputs_dir: "$ROOT/outputs"
+          generated_dir: "$ROOT/generated"
+          EOF
+          echo "Persistent root: $ROOT"
+
+      - name: Setup dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON_BIN="$PYTHON_BIN" bash setup_local.sh
+
+      - name: Set Stage-1 protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import os, yaml
+          p = Path('config/experiment.yaml')
+          c = yaml.safe_load(p.read_text())
+          c['preset'] = os.environ['PRESET']
+          c['train']['epochs'] = int(os.environ['EPOCHS'])
+          # Local pre-screen uses batch 8 for stable RTX 4060 Ti execution.
+          # Final paper runs will be repeated on Kaggle with the locked paper protocol.
+          c['train']['batch'] = 8
+          c['train']['nbs'] = 16
+          c['train']['save_period'] = 10
+          c['train']['patience'] = 0
+          c['pretrained'] = False
+          p.write_text(yaml.safe_dump(c, sort_keys=False), encoding='utf-8')
+          print(p.read_text())
+          PY
+
+      - name: Unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" -m pytest -q tests/test_sprdown.py
+
+      - name: SPR-Down module smoke benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/sprdown_smoke.py --device cuda --iters 100
+
+      - name: Architecture sanity and dataset conversion
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/sanity.py
+
+      - name: Verify converted labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          CACHE="$DATASET/.visdrone_yolo"
+          TRAIN_LABELS=$(find "$CACHE/train/labels" -maxdepth 1 -type f -name '*.txt' | wc -l)
+          VAL_LABELS=$(find "$CACHE/val/labels" -maxdepth 1 -type f -name '*.txt' | wc -l)
+          TRAIN_NONEMPTY=$(find "$CACHE/train/labels" -maxdepth 1 -type f -name '*.txt' -size +0c | wc -l)
+          VAL_NONEMPTY=$(find "$CACHE/val/labels" -maxdepth 1 -type f -name '*.txt' -size +0c | wc -l)
+          echo "train labels: $TRAIN_LABELS non-empty: $TRAIN_NONEMPTY"
+          echo "val labels: $VAL_LABELS non-empty: $VAL_NONEMPTY"
+          test "$TRAIN_LABELS" -eq 6471
+          test "$VAL_LABELS" -eq 548
+          test "$TRAIN_NONEMPTY" -eq 6471
+          test "$VAL_NONEMPTY" -eq 548
+
+      - name: Train Stage-1 model
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/train.py
+
+      - name: Evaluate best checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/home/minh/yoloedge27_experiments/stage1/${PRESET}_${EPOCHS}e"
+          BEST=$(find "$ROOT/runs" -type f -path '*/weights/best.pt' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          test -n "$BEST"
+          "$PYTHON_BIN" scripts/eval_screening.py --weights "$BEST" --output "$ROOT/outputs/${PRESET}_${EPOCHS}e_eval.json"
+
+      - name: Save compact Stage-1 report
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/home/minh/yoloedge27_experiments/stage1/${PRESET}_${EPOCHS}e"
+          REPORT_DIR="reports/yoloedge27/stage1"
+          mkdir -p "$REPORT_DIR"
+          RESULTS=$(find "$ROOT/runs" -type f -name results.csv -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          ARGS=$(find "$ROOT/runs" -type f -name args.yaml -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          BEST=$(find "$ROOT/runs" -type f -path '*/weights/best.pt' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          EVAL="$ROOT/outputs/${PRESET}_${EPOCHS}e_eval.json"
+          test -n "$RESULTS"
+          test -f "$EVAL"
+          cp "$RESULTS" "$REPORT_DIR/${PRESET}_${EPOCHS}e_results.csv"
+          cp "$ARGS" "$REPORT_DIR/${PRESET}_${EPOCHS}e_args.yaml"
+          cp "$EVAL" "$REPORT_DIR/${PRESET}_${EPOCHS}e_eval.json"
+          {
+            echo "preset=$PRESET"
+            echo "epochs=$EPOCHS"
+            echo "persistent_root=$ROOT"
+            echo "best_pt=$BEST"
+            echo "results_csv=$RESULTS"
+            echo "eval_json=$EVAL"
+            echo "note=local pre-screen; final paper metrics must be rerun on Kaggle"
+          } > "$REPORT_DIR/${PRESET}_${EPOCHS}e_paths.txt"
+
+          git config user.name "yoloedge27-runner"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$REPORT_DIR"
+          if ! git diff --cached --quiet; then
+            git commit -m "Record YOLOEdge27 ${PRESET} ${EPOCHS}e Stage-1 results"
+            git push origin HEAD:research/yoloedge27-sprdown-v1
+          fi
