@@ -40,6 +40,14 @@ def _prepare_image_links(images_dir: Path, out_images: Path) -> list[Path]:
     beside the raw images. Hard links keep storage overhead near zero while
     preserving the cache path layout expected by img2label_paths().
     """
+    # Older converter versions created `out_images` as a directory symlink.
+    # It must be removed first; mkdir(exist_ok=True) would otherwise keep the
+    # symlink alive and Ultralytics would still resolve back to the raw folder.
+    if out_images.is_symlink():
+        out_images.unlink()
+    elif out_images.exists() and not out_images.is_dir():
+        raise FileExistsError(f"Expected image cache directory: {out_images}")
+
     out_images.mkdir(parents=True, exist_ok=True)
 
     source_images = sorted(
@@ -56,13 +64,15 @@ def _prepare_image_links(images_dir: Path, out_images: Path) -> list[Path]:
     for src in source_images:
         dst = out_images / src.name
         if dst.exists() or dst.is_symlink():
-            # Replace old per-file symlinks/copies if necessary.
             try:
                 if dst.stat().st_ino == src.stat().st_ino:
                     continue
             except FileNotFoundError:
                 pass
-            dst.unlink()
+            if dst.is_file() or dst.is_symlink():
+                dst.unlink()
+            else:
+                raise FileExistsError(f"Unexpected cache entry: {dst}")
         os.link(src, dst)
 
     return [out_images / p.name for p in source_images]
@@ -154,10 +164,10 @@ def _convert_split(
             encoding="utf-8",
         )
 
-    # Remove stale Ultralytics caches so label discovery is rebuilt after conversion.
-    for cache in (out_split / "labels.cache", out_images.parent / "labels.cache"):
-        if cache.exists():
-            cache.unlink()
+    # Force Ultralytics to rebuild label discovery after conversion.
+    cache = out_split / "labels.cache"
+    if cache.exists():
+        cache.unlink()
 
     if require_annotations and missing_annotations:
         raise RuntimeError(
