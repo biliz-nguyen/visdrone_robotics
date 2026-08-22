@@ -17,13 +17,18 @@ def build_model_yaml(cfg: dict) -> Path:
         downsample_line = (
             "  - [-1, 1, AConv, [1024, 3, 2]]"
         )
-    else:
+    elif cfg["backbone_down"] == "sprdown":
+        downsample_line = (
+            "  - [-1, 1, SPRDown, [1024, 3, 2]]"
+        )
+    elif cfg["backbone_down"] == "conv":
         downsample_line = (
             "  - [-1, 1, Conv, [1024, 3, 2]]"
         )
+    else:
+        raise ValueError(cfg["backbone_down"])
 
     attn = cfg["attention"]
-    acfg = cfg["attention"]
 
     # Attention hyperparameters are stored in cfg["attention_cfg"]
     attention_cfg = cfg["attention_cfg"]
