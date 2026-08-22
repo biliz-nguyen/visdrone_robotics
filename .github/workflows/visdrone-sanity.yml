@@ -1,9 +1,6 @@
 name: VisDrone Sanity
 
 on:
-  push:
-    branches:
-      - setup/gpu-runner-test
   workflow_dispatch:
 
 jobs:
