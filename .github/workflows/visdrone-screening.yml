@@ -59,6 +59,17 @@ jobs:
           test -d "$DATASET/VisDrone2019-DET-train/images"
           test -d "$DATASET/VisDrone2019-DET-val/images"
 
+      - name: Clear stale label caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "$DATASET/VisDrone2019-DET-train/labels.cache"
+          rm -f "$DATASET/VisDrone2019-DET-val/labels.cache"
+          rm -f "$DATASET/VisDrone2019-DET-test-dev/labels.cache"
+          rm -f "$DATASET/.visdrone_yolo/train/labels.cache"
+          rm -f "$DATASET/.visdrone_yolo/val/labels.cache"
+          rm -f "$DATASET/.visdrone_yolo/test/labels.cache"
+
       - name: Write local config
         shell: bash
         run: |
@@ -108,17 +119,44 @@ jobs:
           print(p.read_text())
           PY
 
-      - name: Architecture sanity
+      - name: Architecture sanity and dataset conversion
         shell: bash
         run: |
           set -euo pipefail
           "$PYTHON_BIN" scripts/sanity.py
+
+      - name: Verify converted labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          CACHE="$DATASET/.visdrone_yolo"
+          TRAIN_LABELS=$(find "$CACHE/train/labels" -maxdepth 1 -type f -name '*.txt' | wc -l)
+          VAL_LABELS=$(find "$CACHE/val/labels" -maxdepth 1 -type f -name '*.txt' | wc -l)
+          TRAIN_NONEMPTY=$(find "$CACHE/train/labels" -maxdepth 1 -type f -name '*.txt' -size +0c | wc -l)
+          VAL_NONEMPTY=$(find "$CACHE/val/labels" -maxdepth 1 -type f -name '*.txt' -size +0c | wc -l)
+          echo "train labels: $TRAIN_LABELS non-empty: $TRAIN_NONEMPTY"
+          echo "val labels: $VAL_LABELS non-empty: $VAL_NONEMPTY"
+          test "$TRAIN_LABELS" -eq 6471
+          test "$VAL_LABELS" -eq 548
+          test "$TRAIN_NONEMPTY" -eq 6471
+          test "$VAL_NONEMPTY" -eq 548
 
       - name: Train screening model
         shell: bash
         run: |
           set -euo pipefail
           "$PYTHON_BIN" scripts/train.py
+
+      - name: Evaluate best checkpoint per class
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/home/minh/visdrone_experiments/screening/${PRESET}_${EPOCHS}e"
+          BEST=$(find "$ROOT/runs" -type f -path '*/weights/best.pt' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          test -n "$BEST"
+          "$PYTHON_BIN" scripts/eval_screening.py \
+            --weights "$BEST" \
+            --output "$ROOT/outputs/${PRESET}_${EPOCHS}e_eval.json"
 
       - name: Save compact screening report
         if: success()
@@ -130,15 +168,19 @@ jobs:
           RESULTS=$(find "$ROOT/runs" -type f -name results.csv -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
           ARGS=$(find "$ROOT/runs" -type f -name args.yaml -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
           BEST=$(find "$ROOT/runs" -type f -path '*/weights/best.pt' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          EVAL="$ROOT/outputs/${PRESET}_${EPOCHS}e_eval.json"
           test -n "$RESULTS"
+          test -f "$EVAL"
           cp "$RESULTS" "reports/screening/${PRESET}_${EPOCHS}e_results.csv"
           cp "$ARGS" "reports/screening/${PRESET}_${EPOCHS}e_args.yaml"
+          cp "$EVAL" "reports/screening/${PRESET}_${EPOCHS}e_eval.json"
           {
             echo "preset=$PRESET"
             echo "epochs=$EPOCHS"
             echo "persistent_root=$ROOT"
             echo "best_pt=$BEST"
             echo "results_csv=$RESULTS"
+            echo "eval_json=$EVAL"
           } > "reports/screening/${PRESET}_${EPOCHS}e_paths.txt"
 
           git config user.name "visdrone-runner"
