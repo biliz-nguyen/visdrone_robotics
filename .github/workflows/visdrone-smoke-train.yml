@@ -1,12 +1,6 @@
-# Triggered after cache symlink replacement fix
 name: VisDrone Smoke Train
 
 on:
-  push:
-    branches:
-      - setup/gpu-runner-test
-    paths:
-      - .github/workflows/visdrone-smoke-train.yml
   workflow_dispatch:
 
 permissions:
