@@ -1,9 +1,6 @@
 name: GPU Runner Test
 
 on:
-  push:
-    branches:
-      - setup/gpu-runner-test
   workflow_dispatch:
 
 jobs:
