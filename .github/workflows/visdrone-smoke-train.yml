@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - setup/gpu-runner-test
+    paths-ignore:
+      - diagnostics/**
   workflow_dispatch:
 
 permissions:
@@ -13,6 +15,9 @@ jobs:
   smoke-train:
     runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
     timeout-minutes: 45
+    env:
+      CUDA_VISIBLE_DEVICES: "0"
+      PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
 
     steps:
       - name: Checkout repository
@@ -28,6 +33,9 @@ jobs:
             echo "=== HOST / GPU ==="
             hostname
             nvidia-smi
+
+            echo "=== PRE-FLIGHT CUDA ==="
+            "$PYTHON_BIN" -c "import torch; print('Torch:', torch.__version__); print('Torch CUDA:', torch.version.cuda); print('CUDA available:', torch.cuda.is_available()); print('Device count:', torch.cuda.device_count()); assert torch.cuda.is_available(), 'CUDA unavailable before setup'; print('GPU:', torch.cuda.get_device_name(0))"
 
             echo "=== LOCAL DATASET ==="
             DATASET=/home/minh/Desktop/project/visdrone_local_project/dataset
@@ -47,16 +55,19 @@ jobs:
           EOF
 
             echo "=== SETUP ==="
-            PYTHON_BIN=/home/minh/miniconda3/envs/torch251/bin/python bash setup_local.sh
+            PYTHON_BIN="$PYTHON_BIN" bash setup_local.sh
+
+            echo "=== POST-SETUP CUDA ==="
+            "$PYTHON_BIN" -c "import torch; print('Torch:', torch.__version__); print('Torch CUDA:', torch.version.cuda); print('CUDA available:', torch.cuda.is_available()); print('Device count:', torch.cuda.device_count()); assert torch.cuda.is_available(), 'CUDA unavailable after setup'; print('GPU:', torch.cuda.get_device_name(0))"
 
             echo "=== FORCE 1-EPOCH SMOKE CONFIG ==="
-            /home/minh/miniconda3/envs/torch251/bin/python -c "from pathlib import Path; import yaml; p=Path('config/experiment.yaml'); c=yaml.safe_load(p.read_text()); c['preset']='reg4_eca'; c['train']['epochs']=1; c['train']['save_period']=1; c['train']['patience']=0; p.write_text(yaml.safe_dump(c, sort_keys=False), encoding='utf-8'); print(p.read_text())"
+            "$PYTHON_BIN" -c "from pathlib import Path; import yaml; p=Path('config/experiment.yaml'); c=yaml.safe_load(p.read_text()); c['preset']='reg4_eca'; c['train']['epochs']=1; c['train']['save_period']=1; c['train']['patience']=0; p.write_text(yaml.safe_dump(c, sort_keys=False), encoding='utf-8'); print(p.read_text())"
 
             echo "=== SANITY ==="
-            /home/minh/miniconda3/envs/torch251/bin/python scripts/sanity.py
+            "$PYTHON_BIN" scripts/sanity.py
 
             echo "=== TRAIN 1 EPOCH ==="
-            /home/minh/miniconda3/envs/torch251/bin/python scripts/train.py
+            "$PYTHON_BIN" scripts/train.py
 
             echo "=== OUTPUTS ==="
             find runs -maxdepth 3 -type f \( -name 'results.csv' -o -name 'args.yaml' -o -name 'best.pt' -o -name 'last.pt' \) -printf '%p %k KB\n' 2>/dev/null | tail -40 || true
