@@ -1,0 +1,152 @@
+{
+  "dataset_root": "/home/minh/Desktop/project/visdrone_local_project/dataset",
+  "splits": {
+    "train": {
+      "split": "train",
+      "folder": "VisDrone2019-DET-train",
+      "images": 6471,
+      "expected_images": 6471,
+      "image_count_ok": true,
+      "annotation_files": 6471,
+      "missing_annotations": 0,
+      "missing_annotation_examples": [],
+      "orphan_annotations": 0,
+      "orphan_annotation_examples": [],
+      "kept_objects_1_to_10": 343204,
+      "ignored_regions_category_0": 8813,
+      "others_category_11": 1532,
+      "empty_images_after_filter": 0,
+      "malformed_rows": 0,
+      "invalid_category_rows": 0,
+      "nonpositive_boxes": 1,
+      "boxes_outside_image": 0,
+      "duplicate_rows": 3,
+      "size_stats": {
+        "area_lt_16x16": 89208,
+        "area_lt_32x32": 207524,
+        "min_side_lt_16": 126051
+      },
+      "class_counts": {
+        "ignored-regions": 8813,
+        "pedestrian": 79337,
+        "people": 27059,
+        "bicycle": 10480,
+        "car": 144867,
+        "van": 24956,
+        "truck": 12875,
+        "tricycle": 4812,
+        "awning-tricycle": 3246,
+        "bus": 5926,
+        "motor": 29647,
+        "others": 1532
+      },
+      "truncation_counts": {
+        "0": 340094,
+        "1": 13456
+      },
+      "occlusion_counts": {
+        "0": 176873,
+        "1": 142873,
+        "2": 33804
+      }
+    },
+    "val": {
+      "split": "val",
+      "folder": "VisDrone2019-DET-val",
+      "images": 548,
+      "expected_images": 548,
+      "image_count_ok": true,
+      "annotation_files": 548,
+      "missing_annotations": 0,
+      "missing_annotation_examples": [],
+      "orphan_annotations": 0,
+      "orphan_annotation_examples": [],
+      "kept_objects_1_to_10": 38759,
+      "ignored_regions_category_0": 1378,
+      "others_category_11": 32,
+      "empty_images_after_filter": 0,
+      "malformed_rows": 0,
+      "invalid_category_rows": 0,
+      "nonpositive_boxes": 0,
+      "boxes_outside_image": 0,
+      "duplicate_rows": 0,
+      "size_stats": {
+        "area_lt_16x16": 11950,
+        "area_lt_32x32": 26575,
+        "min_side_lt_16": 16935
+      },
+      "class_counts": {
+        "ignored-regions": 1378,
+        "pedestrian": 8844,
+        "people": 5125,
+        "bicycle": 1287,
+        "car": 14064,
+        "van": 1975,
+        "truck": 750,
+        "tricycle": 1045,
+        "awning-tricycle": 532,
+        "bus": 251,
+        "motor": 4886,
+        "others": 32
+      },
+      "truncation_counts": {
+        "0": 38696,
+        "1": 1473
+      },
+      "occlusion_counts": {
+        "0": 18205,
+        "1": 18878,
+        "2": 3086
+      }
+    },
+    "test-dev": {
+      "split": "test-dev",
+      "folder": "VisDrone2019-DET-test-dev",
+      "images": 1610,
+      "expected_images": 1610,
+      "image_count_ok": true,
+      "annotation_files": 1610,
+      "missing_annotations": 0,
+      "missing_annotation_examples": [],
+      "orphan_annotations": 0,
+      "orphan_annotation_examples": [],
+      "kept_objects_1_to_10": 75102,
+      "ignored_regions_category_0": 2180,
+      "others_category_11": 265,
+      "empty_images_after_filter": 0,
+      "malformed_rows": 0,
+      "invalid_category_rows": 0,
+      "nonpositive_boxes": 0,
+      "boxes_outside_image": 0,
+      "duplicate_rows": 0,
+      "size_stats": {
+        "area_lt_16x16": 27341,
+        "area_lt_32x32": 50816,
+        "min_side_lt_16": 34879
+      },
+      "class_counts": {
+        "ignored-regions": 2180,
+        "pedestrian": 21006,
+        "people": 6376,
+        "bicycle": 1302,
+        "car": 28074,
+        "van": 5771,
+        "truck": 2659,
+        "tricycle": 530,
+        "awning-tricycle": 599,
+        "bus": 2940,
+        "motor": 5845,
+        "others": 265
+      },
+      "truncation_counts": {
+        "0": 74254,
+        "1": 3293
+      },
+      "occlusion_counts": {
+        "0": 44552,
+        "1": 25977,
+        "2": 7018
+      }
+    }
+  }
+}
