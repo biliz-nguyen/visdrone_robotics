@@ -24,24 +24,48 @@ VISDRONE_TO_PROJECT = {
     10: 4,  # motor
 }
 
-
-def _ensure_symlink(link: Path, target: Path) -> None:
-    if link.is_symlink():
-        if link.resolve() == target.resolve():
-            return
-        link.unlink()
-    elif link.exists():
-        raise FileExistsError(
-            f"Expected symlink path but found existing file/directory: {link}"
-        )
-
-    link.parent.mkdir(parents=True, exist_ok=True)
-    os.symlink(target.resolve(), link, target_is_directory=True)
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp"}
 
 
 def _image_size(path: Path) -> tuple[int, int]:
     with Image.open(path) as im:
         return im.width, im.height
+
+
+def _prepare_image_links(images_dir: Path, out_images: Path) -> list[Path]:
+    """Create real cache image paths so Ultralytics finds sibling labels/.
+
+    A directory-level symlink is intentionally avoided because Ultralytics may
+    resolve it back to the official VisDrone folder and then search for labels
+    beside the raw images. Hard links keep storage overhead near zero while
+    preserving the cache path layout expected by img2label_paths().
+    """
+    out_images.mkdir(parents=True, exist_ok=True)
+
+    source_images = sorted(
+        p for p in images_dir.iterdir()
+        if p.is_file() and p.suffix.lower() in IMAGE_EXTS
+    )
+    expected_names = {p.name for p in source_images}
+
+    for stale in list(out_images.iterdir()):
+        if stale.name not in expected_names:
+            if stale.is_file() or stale.is_symlink():
+                stale.unlink()
+
+    for src in source_images:
+        dst = out_images / src.name
+        if dst.exists() or dst.is_symlink():
+            # Replace old per-file symlinks/copies if necessary.
+            try:
+                if dst.stat().st_ino == src.stat().st_ino:
+                    continue
+            except FileNotFoundError:
+                pass
+            dst.unlink()
+        os.link(src, dst)
+
+    return [out_images / p.name for p in source_images]
 
 
 def _convert_split(
@@ -56,23 +80,21 @@ def _convert_split(
     if require_annotations and not annotations_dir.is_dir():
         raise FileNotFoundError(annotations_dir)
 
-    _ensure_symlink(out_split / "images", images_dir)
+    out_images = out_split / "images"
     labels_dir = out_split / "labels"
     labels_dir.mkdir(parents=True, exist_ok=True)
 
-    image_paths = sorted(
-        p for p in images_dir.iterdir()
-        if p.is_file() and p.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp"}
-    )
+    image_paths = _prepare_image_links(images_dir, out_images)
 
     converted_objects = 0
     ignored_objects = 0
     duplicate_rows = 0
     missing_annotations = 0
 
-    for image_path in image_paths:
-        label_path = labels_dir / f"{image_path.stem}.txt"
-        ann_path = annotations_dir / f"{image_path.stem}.txt"
+    for cached_image_path in image_paths:
+        source_image_path = images_dir / cached_image_path.name
+        label_path = labels_dir / f"{cached_image_path.stem}.txt"
+        ann_path = annotations_dir / f"{cached_image_path.stem}.txt"
 
         if not ann_path.exists():
             if require_annotations:
@@ -80,7 +102,7 @@ def _convert_split(
             label_path.write_text("", encoding="utf-8")
             continue
 
-        width, height = _image_size(image_path)
+        width, height = _image_size(source_image_path)
         yolo_lines: list[str] = []
         seen_rows: set[tuple[str, ...]] = set()
 
@@ -109,7 +131,6 @@ def _convert_split(
                 ignored_objects += 1
                 continue
 
-            # Clip the box to image bounds before normalization.
             x1 = max(0.0, min(float(width), left))
             y1 = max(0.0, min(float(height), top))
             x2 = max(0.0, min(float(width), left + box_w))
@@ -132,6 +153,11 @@ def _convert_split(
             "\n".join(yolo_lines) + ("\n" if yolo_lines else ""),
             encoding="utf-8",
         )
+
+    # Remove stale Ultralytics caches so label discovery is rebuilt after conversion.
+    for cache in (out_split / "labels.cache", out_images.parent / "labels.cache"):
+        if cache.exists():
+            cache.unlink()
 
     if require_annotations and missing_annotations:
         raise RuntimeError(
@@ -223,18 +249,11 @@ def build_data_yaml(cfg: dict) -> Path:
         "val": splits["val"],
         "test": splits["test"],
         "nc": len(CLASS_NAMES),
-        "names": {
-            i: name
-            for i, name in enumerate(CLASS_NAMES)
-        },
+        "names": {i: name for i, name in enumerate(CLASS_NAMES)},
     }
 
     data_yaml.write_text(
-        yaml.safe_dump(
-            payload,
-            sort_keys=False,
-            allow_unicode=True,
-        ),
+        yaml.safe_dump(payload, sort_keys=False, allow_unicode=True),
         encoding="utf-8",
     )
 
