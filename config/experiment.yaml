@@ -1,57 +1,35 @@
 # ============================================================
-# EXPERIMENT CONFIG
-# Main switch: change only `preset` for normal experiments.
+# YOLOEdge27 — Q1 RESEARCH TRACK / STAGE 1
+# Goal: isolate SPR-Down against a clean YOLO-derived baseline.
+# Legacy AConv / NWD / attention components are intentionally NOT used.
 # ============================================================
 
-preset: "reg4_eca"
+preset: "edge27_spr_v1"
 
 ultralytics_tag: "v8.4.56"
 
 presets:
-  baseline:
+  edge27_baseline:
     backbone_down: "conv"
     reg_max: 16
     loss_mode: "standard"
     attention: "none"
 
-  reg8:
-    backbone_down: "aconv"
-    reg_max: 8
-    loss_mode: "hybrid_nwd"
+  edge27_spr_v1:
+    backbone_down: "sprdown"
+    reg_max: 16
+    loss_mode: "standard"
     attention: "none"
-
-  reg4:
-    backbone_down: "aconv"
-    reg_max: 4
-    loss_mode: "hybrid_nwd"
-    attention: "none"
-
-  reg4_eca:
-    backbone_down: "aconv"
-    reg_max: 4
-    loss_mode: "hybrid_nwd"
-    attention: "eca"
-
-  reg4_ca:
-    backbone_down: "aconv"
-    reg_max: 4
-    loss_mode: "hybrid_nwd"
-    attention: "ca"
-
-  reg4_rlca:
-    backbone_down: "aconv"
-    reg_max: 4
-    loss_mode: "hybrid_nwd"
-    attention: "rlca"
 
 # -------------------------
-# Train protocol
+# Stage-1 fair train protocol
+# Kaggle-oriented: same optimization settings for baseline and SPR-Down.
 # -------------------------
 train:
   imgsz: 640
-  epochs: 50       # screening=50, final=100
-  batch: 8         # avoids TaskAlignedAssigner OOM on RTX 4060 Ti 16GB
-  nbs: 16          # keep nominal/effective batch consistent across experiments
+  epochs: 50
+  batch: 16
+  nbs: 16
   workers: 4
 
   optimizer: "AdamW"
@@ -95,17 +73,13 @@ train:
 seed: 42
 pretrained: false
 
-# -------------------------
-# Hybrid loss
-# -------------------------
+# Retained only for shared config schema; NOT active in Stage 1.
 nwd:
   c: 12.8
   ciou_weight: 0.75
   nwd_weight: 0.25
 
-# -------------------------
-# Attention
-# -------------------------
+# Retained only for shared builder schema; attention is disabled in Stage 1.
 attention_cfg:
   position: "P2_AFTER_C3K2"
   eca_kernel: 3
