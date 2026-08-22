@@ -37,6 +37,12 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return data or {}
 
 
+def _resolve_local_path(value: str | None, default: Path) -> str:
+    if value:
+        return str(Path(value).expanduser().resolve())
+    return str(default.resolve())
+
+
 def load_config(
     experiment_path: str | Path = DEFAULT_EXPERIMENT,
     local_path: str | Path = DEFAULT_LOCAL,
@@ -102,10 +108,18 @@ def load_config(
     resolved["ultra_repo"] = str(
         ROOT / "third_party" / "ultralytics"
     )
-    resolved["generated_dir"] = str(ROOT / "generated")
-    resolved["runs_dir"] = str(ROOT / "runs")
-    resolved["state_dir"] = str(ROOT / "state")
-    resolved["outputs_dir"] = str(ROOT / "outputs")
+    resolved["generated_dir"] = _resolve_local_path(
+        local.get("generated_dir"), ROOT / "generated"
+    )
+    resolved["runs_dir"] = _resolve_local_path(
+        local.get("runs_dir"), ROOT / "runs"
+    )
+    resolved["state_dir"] = _resolve_local_path(
+        local.get("state_dir"), ROOT / "state"
+    )
+    resolved["outputs_dir"] = _resolve_local_path(
+        local.get("outputs_dir"), ROOT / "outputs"
+    )
 
     _validate(resolved)
 
