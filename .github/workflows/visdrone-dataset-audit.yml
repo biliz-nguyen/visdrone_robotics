@@ -1,0 +1,51 @@
+name: VisDrone Dataset Audit
+
+on:
+  push:
+    branches:
+      - setup/gpu-runner-test
+    paths:
+      - scripts/audit_dataset.py
+      - .github/workflows/visdrone-dataset-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: [self-hosted, Linux, X64, visdrone]
+    timeout-minutes: 15
+    env:
+      PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
+      DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify dataset folders
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d "$DATASET/VisDrone2019-DET-train/images"
+          test -d "$DATASET/VisDrone2019-DET-train/annotations"
+          test -d "$DATASET/VisDrone2019-DET-val/images"
+          test -d "$DATASET/VisDrone2019-DET-val/annotations"
+          test -d "$DATASET/VisDrone2019-DET-test-dev/images"
+          test -d "$DATASET/VisDrone2019-DET-test-dev/annotations"
+
+      - name: Run audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/audit_dataset.py \
+            --root "$DATASET" \
+            --json /tmp/visdrone_dataset_audit.json \
+            --md /tmp/visdrone_dataset_audit.md
+
+      - name: Print report paths
+        shell: bash
+        run: |
+          echo "JSON: /tmp/visdrone_dataset_audit.json"
+          echo "Markdown: /tmp/visdrone_dataset_audit.md"
