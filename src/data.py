@@ -67,6 +67,7 @@ def _convert_split(
 
     converted_objects = 0
     ignored_objects = 0
+    duplicate_rows = 0
     missing_annotations = 0
 
     for image_path in image_paths:
@@ -81,13 +82,19 @@ def _convert_split(
 
         width, height = _image_size(image_path)
         yolo_lines: list[str] = []
+        seen_rows: set[tuple[str, ...]] = set()
 
         for raw in ann_path.read_text(encoding="utf-8-sig").splitlines():
             raw = raw.strip().strip(",")
             if not raw:
                 continue
 
-            parts = [p.strip() for p in raw.split(",")]
+            parts = tuple(p.strip() for p in raw.split(","))
+            if parts in seen_rows:
+                duplicate_rows += 1
+                continue
+            seen_rows.add(parts)
+
             if len(parts) < 6:
                 raise ValueError(f"Malformed VisDrone row in {ann_path}: {raw}")
 
@@ -135,6 +142,7 @@ def _convert_split(
         "images": len(image_paths),
         "objects": converted_objects,
         "ignored": ignored_objects,
+        "duplicates_removed": duplicate_rows,
     }
 
 
@@ -174,7 +182,8 @@ def _prepare_official_visdrone(cfg: dict) -> tuple[Path, dict[str, str]]:
     for split in ("train", "val", "test"):
         s = stats[split]
         print(
-            f"  {split}: images={s['images']} objects={s['objects']} ignored={s['ignored']}"
+            f"  {split}: images={s['images']} objects={s['objects']} "
+            f"ignored={s['ignored']} duplicates_removed={s['duplicates_removed']}"
         )
 
     return cache_root, {
