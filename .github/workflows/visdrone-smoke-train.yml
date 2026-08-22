@@ -1,6 +1,11 @@
 name: VisDrone Smoke Train
 
 on:
+  push:
+    branches:
+      - setup/gpu-runner-test
+    paths:
+      - .github/workflows/visdrone-smoke-train.yml
   workflow_dispatch:
 
 permissions:
@@ -13,6 +18,7 @@ jobs:
     env:
       CUDA_VISIBLE_DEVICES: "0"
       PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
+      DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
 
     steps:
       - name: Checkout repository
@@ -29,7 +35,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          DATASET=/home/minh/Desktop/project/visdrone_local_project/dataset
           test -d "$DATASET/VisDrone2019-DET-train/images"
           test -d "$DATASET/VisDrone2019-DET-train/annotations"
           test -d "$DATASET/VisDrone2019-DET-val/images"
@@ -48,6 +53,17 @@ jobs:
           test "$TRAIN" -eq 6471
           test "$VAL" -eq 548
           test "$TEST" -eq 1610
+
+      - name: Clear stale Ultralytics label caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "$DATASET/VisDrone2019-DET-train/labels.cache"
+          rm -f "$DATASET/VisDrone2019-DET-val/labels.cache"
+          rm -f "$DATASET/VisDrone2019-DET-test-dev/labels.cache"
+          rm -f "$DATASET/.visdrone_yolo/train/labels.cache"
+          rm -f "$DATASET/.visdrone_yolo/val/labels.cache"
+          rm -f "$DATASET/.visdrone_yolo/test/labels.cache"
 
       - name: Write runner-local config
         shell: bash
@@ -88,11 +104,55 @@ jobs:
           set -euo pipefail
           "$PYTHON_BIN" scripts/sanity.py
 
+      - name: Verify converted YOLO labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          CACHE="$DATASET/.visdrone_yolo"
+          test -d "$CACHE/train/images"
+          test -d "$CACHE/train/labels"
+          test -d "$CACHE/val/images"
+          test -d "$CACHE/val/labels"
+
+          TRAIN_LABELS=$(find "$CACHE/train/labels" -maxdepth 1 -type f -name '*.txt' | wc -l)
+          VAL_LABELS=$(find "$CACHE/val/labels" -maxdepth 1 -type f -name '*.txt' | wc -l)
+          TRAIN_NONEMPTY=$(find "$CACHE/train/labels" -maxdepth 1 -type f -name '*.txt' -size +0c | wc -l)
+          VAL_NONEMPTY=$(find "$CACHE/val/labels" -maxdepth 1 -type f -name '*.txt' -size +0c | wc -l)
+
+          echo "train labels: $TRAIN_LABELS non-empty: $TRAIN_NONEMPTY"
+          echo "val labels: $VAL_LABELS non-empty: $VAL_NONEMPTY"
+
+          test "$TRAIN_LABELS" -eq 6471
+          test "$VAL_LABELS" -eq 548
+          test "$TRAIN_NONEMPTY" -eq 6471
+          test "$VAL_NONEMPTY" -eq 548
+
       - name: Train one epoch
         shell: bash
         run: |
           set -euo pipefail
           "$PYTHON_BIN" scripts/train.py
+
+      - name: Verify smoke metrics are non-empty
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESULTS=$(find runs -type f -name results.csv -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          test -n "$RESULTS"
+          "$PYTHON_BIN" - "$RESULTS" <<'PY'
+          import csv, sys
+          path = sys.argv[1]
+          rows = list(csv.DictReader(open(path, newline='', encoding='utf-8')))
+          assert rows, 'results.csv is empty'
+          row = rows[-1]
+          keys = {k.strip(): v for k, v in row.items()}
+          box = float(keys.get('train/box_loss', '0') or 0)
+          dfl = float(keys.get('train/dfl_loss', '0') or 0)
+          print('train/box_loss:', box)
+          print('train/dfl_loss:', dfl)
+          assert box > 0, 'box loss is zero: labels were not loaded'
+          assert dfl > 0, 'dfl loss is zero: labels were not loaded'
+          PY
 
       - name: Summarize outputs
         if: always()
