@@ -72,15 +72,30 @@ def load_config(
     resolved["dataset_root"] = str(
         Path(local["dataset_root"]).expanduser().resolve()
     )
+    resolved["dataset_format"] = local.get(
+        "dataset_format", "visdrone_official"
+    )
+
     resolved["train_images"] = local.get(
-        "train_images", "train/images"
+        "train_images", "VisDrone2019-DET-train/images"
     )
     resolved["val_images"] = local.get(
-        "val_images", "valid/images"
+        "val_images", "VisDrone2019-DET-val/images"
     )
     resolved["test_images"] = local.get(
-        "test_images", "test/images"
+        "test_images", "VisDrone2019-DET-test-dev/images"
     )
+
+    resolved["train_annotations"] = local.get(
+        "train_annotations", "VisDrone2019-DET-train/annotations"
+    )
+    resolved["val_annotations"] = local.get(
+        "val_annotations", "VisDrone2019-DET-val/annotations"
+    )
+    resolved["test_annotations"] = local.get(
+        "test_annotations", "VisDrone2019-DET-test-dev/annotations"
+    )
+
     resolved["test_image"] = local.get("test_image", "")
 
     resolved["project_root"] = str(ROOT)
@@ -112,6 +127,14 @@ def _validate(cfg: dict[str, Any]) -> None:
     if int(cfg["reg_max"]) not in {1, 2, 4, 8, 16}:
         raise ValueError(cfg["reg_max"])
 
+    if cfg.get("dataset_format") not in {
+        "visdrone_official",
+        "yolo",
+    }:
+        raise ValueError(
+            "dataset_format must be 'visdrone_official' or 'yolo'"
+        )
+
     if cfg.get("pretrained", False):
         raise ValueError(
             "This project is locked to scratch training: pretrained=false"
@@ -120,8 +143,8 @@ def _validate(cfg: dict[str, Any]) -> None:
     t = cfg["train"]
     if int(t["batch"]) != int(t["nbs"]):
         print(
-            "WARNING: batch != nbs. "
-            "This changes optimizer accumulation/fairness."
+            "INFO: batch != nbs. Ultralytics will use gradient "
+            "accumulation so the nominal batch remains nbs."
         )
 
 
