@@ -6,6 +6,9 @@ on:
       - setup/gpu-runner-test
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   smoke-train:
     runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
@@ -15,10 +18,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Write runner-local config
+      - name: Run self-diagnosing smoke train
         shell: bash
         run: |
-          cat > config/local.yaml <<'EOF'
+          set +e
+          main() {
+            set -euo pipefail
+
+            echo "=== HOST / GPU ==="
+            hostname
+            nvidia-smi
+
+            echo "=== LOCAL DATASET ==="
+            DATASET=/home/minh/Desktop/project/visdrone_local_project/dataset
+            test -d "$DATASET/train/images"
+            test -d "$DATASET/train/labels"
+            test -d "$DATASET/valid/images"
+            test -d "$DATASET/valid/labels"
+            echo "train images: $(find "$DATASET/train/images" -maxdepth 1 -type f | wc -l)"
+            echo "valid images: $(find "$DATASET/valid/images" -maxdepth 1 -type f | wc -l)"
+
+            cat > config/local.yaml <<'EOF'
           dataset_root: "/home/minh/Desktop/project/visdrone_local_project/dataset"
           train_images: "train/images"
           val_images: "valid/images"
@@ -26,57 +46,50 @@ jobs:
           test_image: ""
           EOF
 
-      - name: Verify GPU and dataset
+            echo "=== SETUP ==="
+            PYTHON_BIN=/home/minh/miniconda3/envs/torch251/bin/python bash setup_local.sh
+
+            echo "=== FORCE 1-EPOCH SMOKE CONFIG ==="
+            /home/minh/miniconda3/envs/torch251/bin/python -c "from pathlib import Path; import yaml; p=Path('config/experiment.yaml'); c=yaml.safe_load(p.read_text()); c['preset']='reg4_eca'; c['train']['epochs']=1; c['train']['save_period']=1; c['train']['patience']=0; p.write_text(yaml.safe_dump(c, sort_keys=False), encoding='utf-8'); print(p.read_text())"
+
+            echo "=== SANITY ==="
+            /home/minh/miniconda3/envs/torch251/bin/python scripts/sanity.py
+
+            echo "=== TRAIN 1 EPOCH ==="
+            /home/minh/miniconda3/envs/torch251/bin/python scripts/train.py
+
+            echo "=== OUTPUTS ==="
+            find runs -maxdepth 3 -type f \( -name 'results.csv' -o -name 'args.yaml' -o -name 'best.pt' -o -name 'last.pt' \) -printf '%p %k KB\n' 2>/dev/null | tail -40 || true
+            find state -maxdepth 1 -type f -name '*.json' -print -exec cat {} \; 2>/dev/null || true
+          }
+
+          main > >(tee smoke_debug.log) 2>&1
+          rc=$?
+          echo "$rc" > smoke_exit_code.txt
+          echo "SMOKE_EXIT_CODE=$rc"
+          exit 0
+
+      - name: Save diagnostic log to branch
         shell: bash
         run: |
           set -euo pipefail
-          nvidia-smi
-          test -d /home/minh/Desktop/project/visdrone_local_project/dataset/train/images
-          test -d /home/minh/Desktop/project/visdrone_local_project/dataset/valid/images
-          echo "train=$(find /home/minh/Desktop/project/visdrone_local_project/dataset/train/images -maxdepth 1 -type f | wc -l)"
-          echo "valid=$(find /home/minh/Desktop/project/visdrone_local_project/dataset/valid/images -maxdepth 1 -type f | wc -l)"
+          mkdir -p diagnostics
+          cp smoke_debug.log diagnostics/smoke_debug.log
+          cp smoke_exit_code.txt diagnostics/smoke_exit_code.txt
+          git config user.name "visdrone-runner"
+          git config user.email "actions@users.noreply.github.com"
+          git add diagnostics/smoke_debug.log diagnostics/smoke_exit_code.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Update smoke training diagnostics"
+            git push origin HEAD:setup/gpu-runner-test
+          fi
 
-      - name: Setup dependencies
-        shell: bash
-        env:
-          PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
-        run: |
-          set -euo pipefail
-          bash setup_local.sh
-
-      - name: Switch to one-epoch smoke protocol
+      - name: Fail job if smoke train failed
         shell: bash
         run: |
-          /home/minh/miniconda3/bin/conda run -n torch251 python - <<'PY'
-          from pathlib import Path
-          import yaml
-          p = Path('config/experiment.yaml')
-          cfg = yaml.safe_load(p.read_text())
-          cfg['preset'] = 'reg4_eca'
-          cfg['train']['epochs'] = 1
-          cfg['train']['save_period'] = 1
-          cfg['train']['patience'] = 0
-          p.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding='utf-8')
-          print(p.read_text())
-          PY
-
-      - name: Architecture sanity before training
-        shell: bash
-        run: |
-          set -euo pipefail
-          /home/minh/miniconda3/bin/conda run -n torch251 python scripts/sanity.py
-
-      - name: Train one epoch on real VisDrone data
-        shell: bash
-        run: |
-          set -euo pipefail
-          /home/minh/miniconda3/bin/conda run -n torch251 python scripts/train.py
-
-      - name: Summarize outputs
-        if: always()
-        shell: bash
-        run: |
-          echo "=== latest runs ==="
-          find runs -maxdepth 3 -type f \( -name 'results.csv' -o -name 'args.yaml' -o -name 'best.pt' -o -name 'last.pt' \) -printf '%p %k KB\n' 2>/dev/null | tail -30 || true
-          echo "=== state ==="
-          find state -maxdepth 1 -type f -name '*.json' -print -exec cat {} \; 2>/dev/null || true
+          rc=$(cat smoke_exit_code.txt)
+          if [ "$rc" -ne 0 ]; then
+            echo "Smoke train failed with exit code $rc. See diagnostics/smoke_debug.log"
+            exit "$rc"
+          fi
+          echo "Smoke train succeeded"
