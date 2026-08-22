@@ -1,0 +1,67 @@
+name: VisDrone Sanity
+
+on:
+  push:
+    branches:
+      - setup/gpu-runner-test
+  workflow_dispatch:
+
+jobs:
+  sanity:
+    runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify local dataset
+        shell: bash
+        run: |
+          set -euo pipefail
+          DATASET=/home/minh/Desktop/project/visdrone_local_project/dataset
+          test -d "$DATASET/train/images"
+          test -d "$DATASET/train/labels"
+          test -d "$DATASET/valid/images"
+          test -d "$DATASET/valid/labels"
+          test -d "$DATASET/test/images"
+          test -d "$DATASET/test/labels"
+          echo "Dataset root: $DATASET"
+          echo "Train images: $(find "$DATASET/train/images" -maxdepth 1 -type f | wc -l)"
+          echo "Train labels: $(find "$DATASET/train/labels" -maxdepth 1 -type f | wc -l)"
+          echo "Valid images: $(find "$DATASET/valid/images" -maxdepth 1 -type f | wc -l)"
+          echo "Valid labels: $(find "$DATASET/valid/labels" -maxdepth 1 -type f | wc -l)"
+          echo "Test images: $(find "$DATASET/test/images" -maxdepth 1 -type f | wc -l)"
+          echo "Test labels: $(find "$DATASET/test/labels" -maxdepth 1 -type f | wc -l)"
+
+      - name: Write runner-local config
+        shell: bash
+        run: |
+          cat > config/local.yaml <<'EOF'
+          dataset_root: "/home/minh/Desktop/project/visdrone_local_project/dataset"
+          train_images: "train/images"
+          val_images: "valid/images"
+          test_images: "test/images"
+          test_image: ""
+          EOF
+          cat config/local.yaml
+
+      - name: Verify GPU environment
+        shell: bash
+        run: |
+          nvidia-smi
+          /home/minh/miniconda3/bin/conda run -n torch251 python -c "import torch; print('Torch:', torch.__version__); print('CUDA:', torch.cuda.is_available()); print('GPU:', torch.cuda.get_device_name(0)); assert torch.cuda.is_available()"
+
+      - name: Setup project dependencies
+        shell: bash
+        env:
+          PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
+        run: |
+          set -euo pipefail
+          bash setup_local.sh
+
+      - name: Run architecture sanity check
+        shell: bash
+        run: |
+          set -euo pipefail
+          /home/minh/miniconda3/bin/conda run -n torch251 python scripts/sanity.py
