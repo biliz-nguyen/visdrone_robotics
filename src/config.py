@@ -129,7 +129,7 @@ def load_config(
 
 
 def _validate(cfg: dict[str, Any]) -> None:
-    if cfg["backbone_down"] not in {"conv", "aconv"}:
+    if cfg["backbone_down"] not in {"conv", "aconv", "sprdown"}:
         raise ValueError(cfg["backbone_down"])
 
     if cfg["loss_mode"] not in {"standard", "hybrid_nwd"}:
