@@ -1,9 +1,6 @@
 name: VisDrone Smoke Train
 
 on:
-  push:
-    branches:
-      - setup/gpu-runner-test
   workflow_dispatch:
 
 permissions:
