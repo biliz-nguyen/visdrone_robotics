@@ -1,4 +1,4 @@
-# Trigger: YOLOEdge27 Stage-1 baseline 50e retry after pytest isolation
+# Trigger: YOLOEdge27 Stage-1 SPR-Down v1 50e
 name: YOLOEdge27 Stage1 Screening
 
 on:
@@ -12,7 +12,7 @@ on:
       preset:
         description: "Stage-1 preset"
         required: true
-        default: "edge27_baseline"
+        default: "edge27_spr_v1"
         type: choice
         options:
           - edge27_baseline
@@ -39,7 +39,7 @@ jobs:
       CUDA_VISIBLE_DEVICES: "0"
       PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
       DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
-      PRESET: ${{ github.event.inputs.preset || 'edge27_baseline' }}
+      PRESET: ${{ github.event.inputs.preset || 'edge27_spr_v1' }}
       EPOCHS: ${{ github.event.inputs.epochs || '50' }}
 
     steps:
@@ -110,10 +110,6 @@ jobs:
       - name: Unit tests
         shell: bash
         env:
-          # The runner also contains ROS2 launch_testing, whose legacy pytest
-          # plugin is incompatible with the pytest version installed for this
-          # project. These SPR-Down unit tests need no external pytest plugins,
-          # so isolate pytest from site-wide entry-point plugins.
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
         run: |
           set -euo pipefail
@@ -158,7 +154,7 @@ jobs:
         run: |
           set -euo pipefail
           ROOT="/home/minh/yoloedge27_experiments/stage1/${PRESET}_${EPOCHS}e"
-          BEST=$(find "$ROOT/runs" -type f -path '*/weights/best.pt' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          BEST=$(find "$ROOT/runs" -type f -path '*/weights/best.pt' -printf '%T@ %p\\n' | sort -nr | head -1 | cut -d' ' -f2-)
           test -n "$BEST"
           "$PYTHON_BIN" scripts/eval_screening.py --weights "$BEST" --output "$ROOT/outputs/${PRESET}_${EPOCHS}e_eval.json"
 
@@ -170,9 +166,9 @@ jobs:
           ROOT="/home/minh/yoloedge27_experiments/stage1/${PRESET}_${EPOCHS}e"
           REPORT_DIR="reports/yoloedge27/stage1"
           mkdir -p "$REPORT_DIR"
-          RESULTS=$(find "$ROOT/runs" -type f -name results.csv -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
-          ARGS=$(find "$ROOT/runs" -type f -name args.yaml -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
-          BEST=$(find "$ROOT/runs" -type f -path '*/weights/best.pt' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          RESULTS=$(find "$ROOT/runs" -type f -name results.csv -printf '%T@ %p\\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          ARGS=$(find "$ROOT/runs" -type f -name args.yaml -printf '%T@ %p\\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          BEST=$(find "$ROOT/runs" -type f -path '*/weights/best.pt' -printf '%T@ %p\\n' | sort -nr | head -1 | cut -d' ' -f2-)
           EVAL="$ROOT/outputs/${PRESET}_${EPOCHS}e_eval.json"
           test -n "$RESULTS"
           test -f "$EVAL"
