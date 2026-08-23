@@ -56,6 +56,12 @@ def main():
         bins = normalize_head_bins(cfg)
         assert list(detect.reg_bins) == bins
         assert [m[-1].out_channels for m in detect.cv2] == [4 * x for x in bins]
+    elif head_mode == "paired_boundary":
+        assert detect.__class__.__name__ == "PairedBoundaryDetect"
+        assert int(detect.reg_max) == 1
+        assert int(detect.no) == int(detect.nc + 4)
+        assert abs(float(detect.ratio_limit) - float(cfg.get("paired_ratio_limit", 0.99))) < 1e-9
+        bins = [1, 1, 1]
     else:
         bins = [int(detect.reg_max)] * len(strides)
         assert detect.__class__.__name__ == "Detect"
@@ -74,6 +80,8 @@ def main():
     if head_mode == "stride_reg":
         assert criterion.__class__.__name__ == "StrideRegDetectionLoss"
         assert list(criterion.reg_bins) == bins
+    else:
+        assert criterion.__class__.__name__ == "v8DetectionLoss"
 
     params = sum(p.numel() for p in model.model.parameters())
     model.model.eval()
