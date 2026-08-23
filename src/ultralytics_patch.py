@@ -42,6 +42,8 @@ def patch_ultralytics(cfg: dict) -> None:
     custom_src = Path(cfg["project_root"]) / "src" / "custom_blocks.py"
     assigner_dst = utils_dir / "visdrone_assigner.py"
     assigner_src = Path(cfg["project_root"]) / "src" / "tiny_assigner.py"
+    quality_dst = utils_dir / "visdrone_quality_assigner.py"
+    quality_src = Path(cfg["project_root"]) / "src" / "tiny_quality_assigner.py"
 
     subprocess.run(
         [
@@ -59,16 +61,26 @@ def patch_ultralytics(cfg: dict) -> None:
 
     shutil.copy2(custom_src, custom_dst)
     shutil.copy2(assigner_src, assigner_dst)
+    shutil.copy2(quality_src, quality_dst)
 
     _patch_tasks(tasks_py)
 
-    if cfg.get("assigner_mode", "standard") == "tiny_recovery":
+    assigner_mode = cfg.get("assigner_mode", "standard")
+    if assigner_mode == "tiny_recovery":
         _patch_tiny_assigner(loss_py, cfg)
+    elif assigner_mode == "tiny_quality":
+        _patch_tiny_quality_assigner(loss_py, cfg)
 
     if cfg["loss_mode"] == "hybrid_nwd":
         _patch_loss(loss_py, cfg)
 
-    for path in [tasks_py, loss_py, custom_dst, assigner_dst]:
+    for path in [
+        tasks_py,
+        loss_py,
+        custom_dst,
+        assigner_dst,
+        quality_dst,
+    ]:
         compile(
             path.read_text(encoding="utf-8"),
             str(path),
@@ -116,6 +128,17 @@ def _patch_tasks(tasks_py: Path) -> None:
     tasks_py.write_text(text, encoding="utf-8")
 
 
+def _task_aligned_constructor() -> str:
+    return """        self.assigner = TaskAlignedAssigner(
+            topk=tal_topk,
+            num_classes=self.nc,
+            alpha=0.5,
+            beta=6.0,
+            stride=self.stride.tolist(),
+            topk2=tal_topk2,
+        )"""
+
+
 def _patch_tiny_assigner(loss_py: Path, cfg: dict) -> None:
     text = loss_py.read_text(encoding="utf-8")
 
@@ -129,15 +152,7 @@ def _patch_tiny_assigner(loss_py: Path, cfg: dict) -> None:
             raise RuntimeError("Cannot find loss.py import anchor")
         text = text.replace(anchor, anchor + import_line + "\n", 1)
 
-    old = """        self.assigner = TaskAlignedAssigner(
-            topk=tal_topk,
-            num_classes=self.nc,
-            alpha=0.5,
-            beta=6.0,
-            stride=self.stride.tolist(),
-            topk2=tal_topk2,
-        )"""
-
+    old = _task_aligned_constructor()
     tiny_cfg = cfg["tiny_assigner"]
     new = f"""        self.assigner = TinyCandidateRecoveryAssigner(
             topk=tal_topk,
@@ -148,6 +163,38 @@ def _patch_tiny_assigner(loss_py: Path, cfg: dict) -> None:
             topk2=tal_topk2,
             tiny_min_side={float(tiny_cfg['tiny_min_side'])},
             min_candidates={int(tiny_cfg['min_candidates'])},
+        )"""
+
+    if old not in text:
+        raise RuntimeError("Cannot find TaskAlignedAssigner construction in loss.py")
+    text = text.replace(old, new, 1)
+    loss_py.write_text(text, encoding="utf-8")
+
+
+def _patch_tiny_quality_assigner(loss_py: Path, cfg: dict) -> None:
+    text = loss_py.read_text(encoding="utf-8")
+
+    import_line = (
+        "from ultralytics.utils.visdrone_quality_assigner import "
+        "TinyAdaptiveQualityAssigner"
+    )
+    if import_line not in text:
+        anchor = "from ultralytics.utils.torch_utils import autocast\n"
+        if anchor not in text:
+            raise RuntimeError("Cannot find loss.py import anchor")
+        text = text.replace(anchor, anchor + import_line + "\n", 1)
+
+    old = _task_aligned_constructor()
+    q = cfg["tiny_quality_assigner"]
+    new = f"""        self.assigner = TinyAdaptiveQualityAssigner(
+            topk=tal_topk,
+            num_classes=self.nc,
+            alpha=0.5,
+            beta=6.0,
+            stride=self.stride.tolist(),
+            topk2=tal_topk2,
+            tiny_min_side={float(q['tiny_min_side'])},
+            beta_floor={float(q['beta_floor'])},
         )"""
 
     if old not in text:
