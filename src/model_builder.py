@@ -33,7 +33,12 @@ def _detect_line(cfg: dict, indices: list[int]) -> str:
     if mode == "quality_overconfidence":
         lam = float(cfg.get("qoc_lambda", 0.25))
         margin = float(cfg.get("qoc_margin", 0.05))
-        return f"  - [{indices}, 1, QualityOverconfidenceDetect, [nc, {lam}, {margin}]]"
+        tiny_threshold = float(cfg.get("qoc_tiny_threshold", 16.0))
+        tiny_bonus = float(cfg.get("qoc_tiny_margin_bonus", 0.0))
+        return (
+            f"  - [{indices}, 1, QualityOverconfidenceDetect, "
+            f"[nc, {lam}, {margin}, {tiny_threshold}, {tiny_bonus}]]"
+        )
     return f"  - [{indices}, 1, Detect, [nc]]"
 
 
