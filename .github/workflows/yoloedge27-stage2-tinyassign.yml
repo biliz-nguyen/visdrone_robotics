@@ -35,6 +35,9 @@ jobs:
       EPOCHS: "5"
       ROOT: /home/minh/yoloedge27_experiments/stage2/edge27_spr_tcr_v1_5e
       REPORT_DIR: reports/yoloedge27/stage2/tinyassign_v1
+      # Force all test/train subprocesses to use the repository-pinned Ultralytics
+      # checkout. The runner may also contain an unrelated partial/stale package.
+      PYTHONPATH: ${{ github.workspace }}/third_party/ultralytics:${{ github.workspace }}
 
     steps:
       - name: Checkout latest Stage2 research branch
@@ -50,7 +53,7 @@ jobs:
           echo "HEAD=$(git rev-parse HEAD)"
           git log -1 --oneline
           grep -q "test_full_forward_is_standard_tal_compatible" tests/test_tiny_assigner.py
-          grep -q "min_candidates=6" tests/test_tiny_assigner.py
+          grep -q "ULTRA_REPO" tests/test_tiny_assigner.py
 
       - name: Pre-flight
         shell: bash
@@ -96,6 +99,22 @@ jobs:
         run: |
           set -euo pipefail
           PYTHON_BIN="$PYTHON_BIN" bash setup_local.sh
+
+      - name: Verify pinned Ultralytics import
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import ultralytics
+          from ultralytics.utils.tal import TaskAlignedAssigner
+          print('Ultralytics:', ultralytics.__version__)
+          print('Ultralytics source:', ultralytics.__file__)
+          print('TAL source:', __import__('ultralytics.utils.tal', fromlist=['x']).__file__)
+          expected = (Path.cwd() / 'third_party' / 'ultralytics').resolve()
+          assert Path(ultralytics.__file__).resolve().is_relative_to(expected)
+          assert TaskAlignedAssigner is not None
+          PY
 
       - name: Lock Stage2 smoke protocol
         shell: bash
