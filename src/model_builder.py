@@ -21,6 +21,10 @@ def build_model_yaml(cfg: dict) -> Path:
         downsample_line = (
             "  - [-1, 1, SPRDown, [1024, 3, 2]]"
         )
+    elif cfg["backbone_down"] == "sprdown_v2":
+        downsample_line = (
+            "  - [-1, 1, SPRDownV2, [1024, 3, 2]]"
+        )
     elif cfg["backbone_down"] == "conv":
         downsample_line = (
             "  - [-1, 1, Conv, [1024, 3, 2]]"
@@ -30,7 +34,6 @@ def build_model_yaml(cfg: dict) -> Path:
 
     attn = cfg["attention"]
 
-    # Attention hyperparameters are stored in cfg["attention_cfg"]
     attention_cfg = cfg["attention_cfg"]
 
     if attn == "none":
