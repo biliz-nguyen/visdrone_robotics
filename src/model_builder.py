@@ -26,9 +26,14 @@ def _downsample_line(cfg: dict, stage: str) -> str:
 
 
 def _detect_line(cfg: dict, indices: list[int]) -> str:
-    if cfg.get("head_mode", "standard") == "stride_reg":
+    mode = cfg.get("head_mode", "standard")
+    if mode == "stride_reg":
         bins = normalize_head_bins(cfg)
         return f"  - [{indices}, 1, StrideRegDetect, [nc, {bins}]]"
+    if mode == "quality_overconfidence":
+        lam = float(cfg.get("qoc_lambda", 0.25))
+        margin = float(cfg.get("qoc_margin", 0.05))
+        return f"  - [{indices}, 1, QualityOverconfidenceDetect, [nc, {lam}, {margin}]]"
     return f"  - [{indices}, 1, Detect, [nc]]"
 
 
