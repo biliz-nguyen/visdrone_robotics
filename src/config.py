@@ -190,11 +190,14 @@ def experiment_tag(cfg: dict[str, Any]) -> str:
         )
 
     mode = cfg.get("assigner_mode", "standard")
-    assign_tag = {
-        "standard": "tal",
-        "tiny_recovery": "tcr",
-        "tiny_quality": "taq",
-    }[mode]
+    if mode == "standard":
+        assign_tag = "tal"
+    elif mode == "tiny_recovery":
+        assign_tag = "tcr"
+    elif cfg.get("preset") == "edge27_spr_taq_v2":
+        assign_tag = "taqv2"
+    else:
+        assign_tag = "taq"
 
     return (
         f"{cfg['backbone_down']}_"
