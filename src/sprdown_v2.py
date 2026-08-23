@@ -1,18 +1,24 @@
-"""SPR-Down v2 research prototype.
+"""SPR-Down v2 edge-latency prototype.
 
-This file is intentionally isolated from the training builder until the v1
-Stage-1 report is finalized.  The v2 goal is to preserve the phase-reassembly
-idea while removing the input-conditioned GAP/softmax path that dominated the
-v1 micro-benchmark latency.
+The v1 module uses input-conditioned polyphase scoring (split + global
+statistics + softmax + weighted reassembly).  That preserves the intended
+phase-aware behavior, but the extra tensor operations can dominate latency.
 
-Working design (not a novelty claim):
-    even-pad -> pixel_unshuffle(2) -> grouped 1x1 phase reassembly
-             -> depthwise 3x3 -> pointwise 1x1
+SPR-Down v2 tests a deployment-oriented approximation.  A learned per-channel
+2x2 stride-2 depthwise kernel performs the four-phase reassembly directly:
 
-For each original channel, pixel_unshuffle exposes its four 2x2 sampling
-phases as four adjacent channels. A grouped 1x1 convolution (groups=C) learns
-one 4->1 linear reassembly per original channel. It is initialized to a simple
-0.25 average, then learned end-to-end.
+    even-pad -> DWConv 2x2 s2 (phase reassembly)
+             -> DWConv 3x3 s1 (spatial mixing)
+             -> PWConv 1x1 (channel projection)
+
+A depthwise 2x2 stride-2 convolution is algebraically equivalent to exposing
+the four 2x2 sampling phases and applying one static learned 4->1 linear
+reassembly kernel per input channel.  Using the native convolution avoids an
+explicit pixel_unshuffle tensor plus grouped 1x1 convolution in the deployment
+path.  The phase kernel is initialized to 0.25, so the initial reassembly is
+exactly 2x2 average pooling before end-to-end learning.
+
+This file is a research/engineering prototype, not a novelty claim.
 """
 
 from __future__ import annotations
@@ -23,7 +29,7 @@ import torch.nn.functional as F
 
 
 class SPRDownV2(nn.Module):
-    """Edge-fused selective phase reassembly downsampling prototype."""
+    """Fused static-phase reassembly downsampling for edge deployment."""
 
     default_act = nn.SiLU()
 
@@ -54,14 +60,13 @@ class SPRDownV2(nn.Module):
         self.k = int(k)
         self.s = int(s)
 
-        # pixel_unshuffle creates 4*C channels ordered as four phases per
-        # original channel. groups=C therefore implements C independent
-        # learned 4->1 phase reassembly kernels.
+        # Fused four-phase reassembly. For each input channel this kernel has
+        # four coefficients corresponding to the 2x2 sampling phases.
         self.phase_mix = nn.Conv2d(
-            4 * self.c1,
             self.c1,
-            kernel_size=1,
-            stride=1,
+            self.c1,
+            kernel_size=2,
+            stride=2,
             padding=0,
             groups=self.c1,
             bias=False,
@@ -111,8 +116,7 @@ class SPRDownV2(nn.Module):
 
     def phase_reassemble(self, x: torch.Tensor) -> torch.Tensor:
         x = self._pad_to_even(x)
-        phases = F.pixel_unshuffle(x, 2)
-        return self.phase_mix(phases)
+        return self.phase_mix(x)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.shape[1] != self.c1:
@@ -125,4 +129,4 @@ class SPRDownV2(nn.Module):
         return y
 
     def extra_repr(self) -> str:
-        return f"c1={self.c1}, c2={self.c2}, stride=2"
+        return f"c1={self.c1}, c2={self.c2}, stride=2, phase_kernel=2x2-dw"
