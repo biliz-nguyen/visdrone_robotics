@@ -26,7 +26,7 @@ CLASS_NAMES = [
 
 SPR_PLACEMENT_ORDER = ("p2_p3", "p3_p4", "p4_p5")
 SPR_PLACEMENT_SET = set(SPR_PLACEMENT_ORDER)
-HEAD_MODES = {"standard", "stride_reg"}
+HEAD_MODES = {"standard", "stride_reg", "quality_overconfidence"}
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -98,15 +98,9 @@ def load_config(
     resolved["train_images"] = local.get("train_images", "VisDrone2019-DET-train/images")
     resolved["val_images"] = local.get("val_images", "VisDrone2019-DET-val/images")
     resolved["test_images"] = local.get("test_images", "VisDrone2019-DET-test-dev/images")
-    resolved["train_annotations"] = local.get(
-        "train_annotations", "VisDrone2019-DET-train/annotations"
-    )
-    resolved["val_annotations"] = local.get(
-        "val_annotations", "VisDrone2019-DET-val/annotations"
-    )
-    resolved["test_annotations"] = local.get(
-        "test_annotations", "VisDrone2019-DET-test-dev/annotations"
-    )
+    resolved["train_annotations"] = local.get("train_annotations", "VisDrone2019-DET-train/annotations")
+    resolved["val_annotations"] = local.get("val_annotations", "VisDrone2019-DET-val/annotations")
+    resolved["test_annotations"] = local.get("test_annotations", "VisDrone2019-DET-test-dev/annotations")
     resolved["test_image"] = local.get("test_image", "")
 
     resolved["project_root"] = str(ROOT)
@@ -172,6 +166,15 @@ def _validate(cfg: dict[str, Any]) -> None:
                 raise ValueError("head_reg_bins values must be one of 1,2,4,8,16")
             if bins != sorted(bins, reverse=True):
                 raise ValueError("head_reg_bins must be non-increasing from P2 to P4")
+        elif head_mode == "quality_overconfidence":
+            if int(cfg["reg_max"]) != 1:
+                raise ValueError("QOC is locked to DFL-free reg_max=1")
+            lam = float(cfg.get("qoc_lambda", 0.25))
+            margin = float(cfg.get("qoc_margin", 0.05))
+            if lam < 0:
+                raise ValueError("qoc_lambda must be non-negative")
+            if not (0.0 <= margin < 1.0):
+                raise ValueError("qoc_margin must be in [0,1)")
         elif int(cfg["reg_max"]) != 1:
             raise ValueError("Standard-head variant in the head study is reserved for the DFL-free reg_max=1 control")
     else:
@@ -179,10 +182,7 @@ def _validate(cfg: dict[str, Any]) -> None:
 
     t = cfg["train"]
     if int(t["batch"]) != int(t["nbs"]):
-        print(
-            "INFO: batch != nbs. Ultralytics will use gradient accumulation "
-            "so the nominal batch remains nbs."
-        )
+        print("INFO: batch != nbs. Ultralytics will use gradient accumulation so the nominal batch remains nbs.")
 
 
 def experiment_tag(cfg: dict[str, Any]) -> str:
@@ -195,9 +195,14 @@ def experiment_tag(cfg: dict[str, Any]) -> str:
         arch_tag = cfg["backbone_down"]
 
     if cfg.get("study", "placement") == "head":
-        if cfg.get("head_mode") == "stride_reg":
+        mode = cfg.get("head_mode")
+        if mode == "stride_reg":
             bins = "-".join(str(x) for x in normalize_head_bins(cfg))
             head_tag = f"snr-{bins}"
+        elif mode == "quality_overconfidence":
+            lam = str(float(cfg.get("qoc_lambda", 0.25))).replace(".", "p")
+            margin = str(float(cfg.get("qoc_margin", 0.05))).replace(".", "p")
+            head_tag = f"qoc-l{lam}-m{margin}"
         else:
             head_tag = "direct-r1"
         return (
