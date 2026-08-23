@@ -10,16 +10,25 @@ from ultralytics.utils.metrics import bbox_iou
 from ultralytics.utils.tal import make_anchors
 
 
+def quality_overconfidence_penalty(
+    confidence: torch.Tensor,
+    quality: torch.Tensor,
+    weight: torch.Tensor,
+    margin: float,
+    normalizer: torch.Tensor | float,
+) -> torch.Tensor:
+    """One-sided penalty: only confidence that outruns localization quality is suppressed."""
+    overconfidence = F.relu(confidence - (quality + float(margin)))
+    return (overconfidence.square() * weight).sum() / normalizer
+
+
 class QualityOverconfidenceLoss(v8DetectionLoss):
     """Stock YOLO detection loss plus one-sided localization-overconfidence control.
 
-    QOC deliberately does *not* replace BCE targets with IoU/quality targets.
-    Standard TAL soft labels, classification BCE, CIoU and direct-regression
-    losses remain intact. For assigned positives only, QOC penalizes the case
-    where the predicted class confidence exceeds the detached localization IoU
-    by more than a small margin:
-
-        L_qoc = mean_w( relu(sigmoid(s_gt) - (IoU_detached + margin))^2 )
+    QOC does not replace BCE targets with IoU/quality targets. Standard TAL soft
+    labels, classification BCE, CIoU and direct-regression losses remain intact.
+    For assigned positives only, QOC penalizes the case where predicted class
+    confidence exceeds detached localization IoU by more than a small margin.
 
     This is asymmetric: well-localized but under-confident positives are left to
     the ordinary classification loss, while over-confident poorly localized
@@ -85,9 +94,9 @@ class QualityOverconfidenceLoss(v8DetectionLoss):
                 stride_tensor,
             )
 
-            # Training-only QOC. Localization quality is detached so the extra
-            # term calibrates the classification head without pulling boxes to
-            # game the quality signal.
+            # Training-only QOC. Localization quality is detached so this extra
+            # term calibrates classification without letting box regression game
+            # the quality signal.
             target_bboxes_feat = target_bboxes / stride_tensor
             quality = bbox_iou(
                 pred_bboxes[fg_mask].detach(),
@@ -100,10 +109,15 @@ class QualityOverconfidenceLoss(v8DetectionLoss):
             assigned_cls = pos_targets.argmax(dim=-1)
             pos_logits = pred_scores[fg_mask].gather(1, assigned_cls[:, None]).squeeze(1)
             confidence = pos_logits.sigmoid()
-
-            overconfidence = F.relu(confidence - (quality + self.qoc_margin))
             pos_weight = pos_targets.sum(-1).detach()
-            qoc = (overconfidence.square() * pos_weight).sum() / target_scores_sum
+
+            qoc = quality_overconfidence_penalty(
+                confidence,
+                quality,
+                pos_weight,
+                margin=self.qoc_margin,
+                normalizer=target_scores_sum,
+            )
             loss[1] = loss[1] + self.qoc_lambda * qoc
 
         loss[0] *= self.hyp.box
