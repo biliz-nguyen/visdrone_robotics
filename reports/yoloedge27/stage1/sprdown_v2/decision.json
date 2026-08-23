@@ -1,0 +1,25 @@
+{
+  "overall": "BORDERLINE",
+  "next_step": "Keep v2 as candidate; inspect full-model/export latency before training 50e.",
+  "target_site": "P4_to_P5",
+  "devices": {
+    "cuda": {
+      "status": "PASS",
+      "v1_over_conv": 2.27172733069482,
+      "v2_over_conv": 1.2521893154409052,
+      "v2_over_v1": 0.551205815293826
+    },
+    "cpu_1t": {
+      "status": "PASS",
+      "v1_over_conv": 0.31312117493245306,
+      "v2_over_conv": 0.24728294588786676,
+      "v2_over_v1": 0.7897356221316267
+    },
+    "cpu_4t": {
+      "status": "BORDERLINE",
+      "v1_over_conv": 0.65927165073798,
+      "v2_over_conv": 0.5327400891366407,
+      "v2_over_v1": 0.8080737106476494
+    }
+  }
+}
