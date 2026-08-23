@@ -1,0 +1,61 @@
+{
+  "split": "train",
+  "imgsz": 640,
+  "strides": [
+    4,
+    8,
+    16
+  ],
+  "tiny_min_side_px": 16.0,
+  "min_candidates": 4,
+  "objects": 343202,
+  "all_candidate_counts": {
+    "count": 343202,
+    "mean": 34.47695526249847,
+    "median": 10.0,
+    "p10": 1.0,
+    "p25": 4.0,
+    "p75": 29.0,
+    "p90": 80.0,
+    "min": 0.0,
+    "max": 5700.0
+  },
+  "tiny": {
+    "objects": 267397,
+    "fraction_of_all": 0.779124247527695,
+    "starved_lt_min_candidates": 85285,
+    "starved_fraction": 0.31894523872743524,
+    "zero_candidate": 11748,
+    "zero_fraction": 0.04393467391182399,
+    "candidate_counts": {
+      "count": 267397,
+      "mean": 9.810719641581619,
+      "median": 7.0,
+      "p10": 1.0,
+      "p25": 3.0,
+      "p75": 14.0,
+      "p90": 23.0,
+      "min": 0.0,
+      "max": 158.0
+    }
+  },
+  "pedestrian_people_tiny": {
+    "objects": 101556,
+    "starved_lt_min_candidates": 43828,
+    "starved_fraction": 0.4315648509196896,
+    "zero_candidate": 7042,
+    "zero_fraction": 0.06934105321202096,
+    "candidate_counts": {
+      "count": 101556,
+      "mean": 7.20439954310922,
+      "median": 4.0,
+      "p10": 1.0,
+      "p25": 2.0,
+      "p75": 10.0,
+      "p90": 18.0,
+      "min": 0.0,
+      "max": 82.0
+    }
+  },
+  "interpretation": "TCR changes only tiny GTs with fewer than min_candidates inside-GT anchor centers; it recovers the nearest unused centers before standard TAL ranking."
+}

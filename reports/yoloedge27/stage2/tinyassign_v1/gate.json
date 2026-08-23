@@ -1,0 +1,7 @@
+{
+  "threshold": 0.05,
+  "tiny_starved_fraction": 0.31894523872743524,
+  "pedestrian_people_tiny_starved_fraction": 0.4315648509196896,
+  "gate": "PASS_RUN_5E",
+  "note": "Recovered after training; diagnostic recomputed without retraining."
+}
