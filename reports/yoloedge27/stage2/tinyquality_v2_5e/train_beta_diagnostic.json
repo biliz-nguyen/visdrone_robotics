@@ -1,0 +1,61 @@
+{
+  "split": "train",
+  "imgsz": 640,
+  "base_beta": 6.0,
+  "beta_floor": 5.0,
+  "tiny_min_side_px": 16.0,
+  "schedule": "beta_floor + (base_beta-beta_floor)*clamp(min_side/tiny_min_side,0,1)",
+  "objects": 343202,
+  "affected_objects": 266021,
+  "affected_fraction": 0.775114946882594,
+  "beta_all": {
+    "count": 343202,
+    "mean": 5.584746646636764,
+    "median": 5.5416668,
+    "p10": 5.2,
+    "p25": 5.314285694857142,
+    "p75": 5.9399999,
+    "p90": 6.0,
+    "min": 5.020876741544885,
+    "max": 6.0
+  },
+  "beta_affected": {
+    "count": 266021,
+    "mean": 5.464268680363697,
+    "median": 5.4285716,
+    "p10": 5.1764704,
+    "p25": 5.271398765344467,
+    "p75": 5.6285716,
+    "p90": 5.8199999,
+    "min": 5.020876741544885,
+    "max": 5.999999917714286
+  },
+  "pedestrian_people": {
+    "objects": 106395,
+    "affected_objects": 101165,
+    "affected_fraction": 0.9508435546783214,
+    "beta_all": {
+      "count": 106395,
+      "mean": 5.403039006911689,
+      "median": 5.3428572,
+      "p10": 5.1458332,
+      "p25": 5.22,
+      "p75": 5.5294116,
+      "p90": 5.78,
+      "min": 5.020876741544885,
+      "max": 6.0
+    },
+    "beta_affected": {
+      "count": 101165,
+      "mean": 5.372177483718374,
+      "median": 5.3235296,
+      "p10": 5.1428572,
+      "p25": 5.2083332,
+      "p75": 5.4857144,
+      "p90": 5.68,
+      "min": 5.020876741544885,
+      "max": 5.999999917714286
+    }
+  },
+  "interpretation": "TAQ keeps the standard TAL candidate region and changes only the localization exponent for GTs below the tiny threshold; non-tiny GTs remain beta=6 exactly."
+}

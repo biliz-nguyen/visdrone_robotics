@@ -1,0 +1,8 @@
+branch=research/yoloedge27-tinyquality-v2
+preset=edge27_spr_taq_v2
+epochs=5
+beta_floor=5.0
+root=/home/minh/yoloedge27_experiments/stage2/edge27_spr_taq_v2_5e
+best_pt=/home/minh/yoloedge27_experiments/stage2/edge27_spr_taq_v2_5e/runs/sprdown_reg16_standard_taqv2_attn-none_5e_seed42/weights/best.pt
+results_csv=/home/minh/yoloedge27_experiments/stage2/edge27_spr_taq_v2_5e/runs/sprdown_reg16_standard_taqv2_attn-none_5e_seed42/results.csv
+note=local 5e screening only; no 50e TAQ v2 run authorized
