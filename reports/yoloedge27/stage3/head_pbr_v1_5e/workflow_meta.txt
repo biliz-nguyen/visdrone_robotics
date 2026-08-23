@@ -1,0 +1,10 @@
+branch=research/yoloedge27-head-pbr-v1
+head=60759fcc085e8000f8f4f5a15c750cf56f97e24a
+screen_root=/home/minh/yoloedge27_experiments/stage3/head_pbr_v1_5e
+controls=H0,H1 reused; NOT retrained
+new_variant=P1 only
+epochs=5
+backbone=S1 SPR P4->P5
+assignment=standard_TAL
+head=PBR DFL-free paired-boundary regression
+note=local screening only; checkpoints remain runner-local
