@@ -1,0 +1,14 @@
+branch=research/yoloedge27-head-qoc-v3
+head=457d6ffde8cd4469b45681cac42f205859cc5083
+screen_root=/home/minh/yoloedge27_experiments/stage3/head_qoc_v3_5e
+controls=H0,H1,Q1,Q2 reused; NOT retrained
+new_variant=Q3 only
+epochs=5
+backbone=S1 SPR P4->P5
+assignment=standard_TAL
+head=H1 direct-r1; inference unchanged
+training_extra=midpoint tiny-aware continuous-margin QOC
+tiny_threshold_px=16
+base_margin=0.05
+tiny_margin_bonus=0.05
+note=local screening only; checkpoints remain runner-local
