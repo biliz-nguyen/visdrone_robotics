@@ -1,0 +1,200 @@
+{
+  "purpose": "QOC v1 local 5e confidence-alignment screen; not final paper evidence.",
+  "novelty_status": "engineering hypothesis only; distinct from replacing class targets with IoU quality or pairwise ranking, no novelty claim",
+  "control_policy": "Reuse H0/H1 from prior head screen; train only Q1.",
+  "mechanism": {
+    "base": "H1 global DFL-free direct regression (reg_max=1)",
+    "assignment": "standard TaskAlignedAssigner unchanged",
+    "classification": "standard TAL soft-target BCE unchanged",
+    "box_loss": "standard CIoU + direct-regression unchanged",
+    "extra_train_term": "relu(class_confidence - (detached IoU + margin))^2 on assigned positives only",
+    "qoc_lambda": 0.25,
+    "qoc_margin": 0.05,
+    "inference_change": "none",
+    "extra_prediction_channels": 0
+  },
+  "protocol": {
+    "epochs": 5,
+    "batch": 8,
+    "nbs": 16,
+    "imgsz": 640,
+    "seed": 42,
+    "pretrained": false,
+    "backbone": "S1: one SPR-Down at P4->P5"
+  },
+  "controls": {
+    "H0": {
+      "id": "H0",
+      "preset": "edge27_spr_p4p5",
+      "description": "REUSED existing S1: SPR P4->P5 + stock Detect reg_max=16",
+      "status": "reused_existing",
+      "rerun": false,
+      "complexity": {
+        "params": 1736638,
+        "gflops": 9.9122
+      },
+      "epoch5": {
+        "precision": 0.24109,
+        "recall": 0.19443,
+        "map50": 0.14213,
+        "map50_95": 0.07379
+      },
+      "best_eval": {
+        "precision": 0.24151772295054963,
+        "recall": 0.1947574970672591,
+        "map50": 0.14290891413848147,
+        "map50_95": 0.07412907581209939
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.17224715050248374,
+          "recall": 0.31094527363184077,
+          "map50": 0.14414284104116837,
+          "map50_95": 0.05106804110233591
+        },
+        "people": {
+          "precision": 0.4097181898089238,
+          "recall": 0.13177860499869562,
+          "map50": 0.1332432397945635,
+          "map50_95": 0.03979999138819667
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.1585121551155959,
+        "inference": 1.5381940602575896,
+        "loss": 0.00043448722119575675,
+        "postprocess": 2.6878321386770057
+      },
+      "source_results": "/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage1/spr_placement_v1_5e/s1/results.csv",
+      "source_eval": "/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage1/spr_placement_v1_5e/s1/best_eval.json",
+      "delta_best_eval_vs_h0": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "map50": 0.0,
+        "map50_95": 0.0
+      }
+    },
+    "H1": {
+      "id": "H1",
+      "preset": "edge27_head_direct_r1",
+      "description": "stock Detect, global reg_max=1 / DFL-free control",
+      "status": "complete",
+      "rerun": true,
+      "complexity": {
+        "params": 1523322,
+        "gflops": 6.0501
+      },
+      "epoch5": {
+        "precision": 0.32298,
+        "recall": 0.19148,
+        "map50": 0.13678,
+        "map50_95": 0.06809
+      },
+      "best_eval": {
+        "precision": 0.3234986123515966,
+        "recall": 0.19125586123160976,
+        "map50": 0.13716525111748543,
+        "map50_95": 0.06838695464011774
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.1324230280495622,
+          "recall": 0.34294436906377207,
+          "map50": 0.1392833605031132,
+          "map50_95": 0.046377298980455714
+        },
+        "people": {
+          "precision": 0.3781135511941139,
+          "recall": 0.13482926829268294,
+          "map50": 0.11461462041310316,
+          "map50_95": 0.033674010065047555
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.16372997629498498,
+        "inference": 1.1806755857740254,
+        "loss": 0.00043318246806297033,
+        "postprocess": 2.598589987196215
+      },
+      "onnx_export": {
+        "ok": true
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage3/head_snr_v1_5e/h1_edge27_head_direct_r1/runs/spr-p4p5_direct-r1_standard_attn-none_5e_seed42/weights/best.pt",
+      "delta_best_eval_vs_h0": {
+        "precision": 0.08198088940104697,
+        "recall": -0.0035016358356493305,
+        "map50": -0.005743663020996048,
+        "map50_95": -0.005742121171981654
+      }
+    }
+  },
+  "Q1": {
+    "id": "Q1",
+    "preset": "edge27_head_qoc_v1",
+    "description": "H1 direct-reg head + training-only one-sided Quality Overconfidence Constraint",
+    "status": "complete",
+    "rerun": true,
+    "complexity": {
+      "params": 1523322,
+      "gflops": 6.0501
+    },
+    "epoch5": {
+      "precision": 0.3241,
+      "recall": 0.19332,
+      "map50": 0.13873,
+      "map50_95": 0.06881
+    },
+    "best_eval": {
+      "precision": 0.3258251407223382,
+      "recall": 0.19345664676899477,
+      "map50": 0.13939598304628803,
+      "map50_95": 0.06905459775599901
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.14189313219219982,
+        "recall": 0.3266621438263229,
+        "map50": 0.13383276651295234,
+        "map50_95": 0.04482369860557291
+      },
+      "people": {
+        "precision": 0.42566867389429097,
+        "recall": 0.09703714208451128,
+        "map50": 0.11278085127905188,
+        "map50_95": 0.03217074656265696
+      }
+    },
+    "speed_ms_best_eval": {
+      "preprocess": 0.154273658678578,
+      "inference": 1.1367421076320967,
+      "loss": 0.00045362048031232,
+      "postprocess": 2.7086352974748498
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage3/head_qoc_v1_5e/runs/spr-p4p5_qoc-l0p25-m0p05_standard_attn-none_5e_seed42/weights/best.pt",
+    "delta_best_eval_vs_h0": {
+      "precision": 0.08430741777178857,
+      "recall": -0.0013008502982643222,
+      "map50": -0.0035129310921934442,
+      "map50_95": -0.005074478056100382
+    },
+    "delta_complexity_vs_h0": {
+      "params": -213316,
+      "gflops": -3.8621000000000008
+    },
+    "delta_best_eval_vs_h1": {
+      "precision": 0.0023265283707415985,
+      "recall": 0.0022007855373850083,
+      "map50": 0.002230731928802604,
+      "map50_95": 0.0006676431158812723
+    },
+    "delta_complexity_vs_h1": {
+      "params": 0,
+      "gflops": 0.0
+    }
+  },
+  "caution": "deterministic=false and 5 epochs only; promote to 50e only if Q1 beats H1 convincingly without losing the H1 efficiency point."
+}

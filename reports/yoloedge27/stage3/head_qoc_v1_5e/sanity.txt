@@ -1,0 +1,37 @@
+HEAD is now at 9a414a82 Fix QNN export with built-in provider wheels (#24618)
+INFO: batch != nbs. Ultralytics will use gradient accumulation so the nominal batch remains nbs.
+Official VisDrone -> YOLO cache: /home/minh/Desktop/project/visdrone_local_project/dataset/.visdrone_yolo
+  train: images=6471 objects=343202 ignored=10345 duplicates_removed=3
+  val: images=548 objects=38759 ignored=1410 duplicates_removed=0
+  test: images=1610 objects=75102 ignored=2445 duplicates_removed=0
+==========================================================================================
+SANITY CHECK
+==========================================================================================
+Ultralytics: 8.4.56
+Source: /home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/third_party/ultralytics/ultralytics/__init__.py
+Data YAML: /home/minh/yoloedge27_experiments/stage3/head_qoc_v1_5e/generated/visdrone_local.yaml
+Model YAML: /home/minh/yoloedge27_experiments/stage3/head_qoc_v1_5e/generated/model_spr-p4p5_qoc-l0p25-m0p05_standard_attn-none_5e_seed42.yaml
+WARNING ⚠️ no model scale passed. Assuming scale='n'.
+
+==========================================================================================
+SANITY CHECK PASSED
+==========================================================================================
+Preset: edge27_head_qoc_v1
+Experiment: spr-p4p5_qoc-l0p25-m0p05_standard_attn-none_5e_seed42
+Study: head
+SPR placements: ['p4_p5']
+Stage modules: {'p2_p3': 'Conv', 'p3_p4': 'Conv', 'p4_p5': 'SPRDown'}
+Head: QualityOverconfidenceDetect
+Head mode: quality_overconfidence
+Regression bins P2/P3/P4: [1, 1, 1]
+QOC lambda: 0.25
+QOC margin: 0.05
+Assigner: TaskAlignedAssigner
+Strides: [4, 8, 16]
+SPRDown count: 1
+Attention: none
+Loss: standard
+Params: 1,523,322 (1.5233 M)
+GFLOPs: 6.0501
+Pretrained: False
+==========================================================================================

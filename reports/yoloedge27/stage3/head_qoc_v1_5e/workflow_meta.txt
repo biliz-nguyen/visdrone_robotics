@@ -1,0 +1,11 @@
+branch=research/yoloedge27-head-qoc-v1
+head=fbac2598393bf24ff1a719a58bfc2ef3a013132c
+screen_root=/home/minh/yoloedge27_experiments/stage3/head_qoc_v1_5e
+controls=H0,H1 reused; NOT retrained
+new_variant=Q1 only
+epochs=5
+backbone=S1 SPR P4->P5
+assignment=standard_TAL
+head=H1 direct-r1; inference unchanged
+training_extra=one-sided QOC confidence-vs-detached-IoU penalty
+note=local screening only; checkpoints remain runner-local
