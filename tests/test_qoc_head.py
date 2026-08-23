@@ -5,7 +5,7 @@ import torch
 from ultralytics.nn.modules.head import Detect
 
 from src.qoc_head import QualityOverconfidenceDetect
-from src.qoc_loss import quality_overconfidence_penalty
+from src.qoc_loss import adaptive_qoc_margin, quality_overconfidence_penalty
 
 
 def _nparams(module) -> int:
@@ -19,6 +19,8 @@ def test_qoc_head_has_exact_h1_prediction_budget():
         nc=10,
         qoc_lambda=0.25,
         qoc_margin=0.05,
+        qoc_tiny_threshold=16.0,
+        qoc_tiny_margin_bonus=0.10,
         end2end=False,
         ch=ch,
     )
@@ -45,16 +47,52 @@ def test_qoc_penalty_is_one_sided():
     assert confidence.grad[2].item() == 0.0
 
 
+def test_tiny_margin_is_continuous_and_recovers_v1_at_threshold():
+    min_side = torch.tensor([0.0, 4.0, 8.0, 16.0, 32.0])
+    margin = adaptive_qoc_margin(min_side, base_margin=0.05, tiny_threshold=16.0, tiny_margin_bonus=0.10)
+    expected = torch.tensor([0.15, 0.125, 0.10, 0.05, 0.05])
+    assert torch.allclose(margin, expected, atol=1e-7, rtol=0)
+
+
+def test_tiny_tolerance_cannot_penalize_more_than_qoc_v1():
+    confidence = torch.tensor([0.70, 0.70, 0.70, 0.70])
+    quality = torch.tensor([0.50, 0.50, 0.50, 0.50])
+    weight = torch.ones(4)
+    min_side = torch.tensor([4.0, 8.0, 16.0, 32.0])
+
+    v1 = quality_overconfidence_penalty(
+        confidence, quality, weight, margin=0.05, normalizer=4.0
+    )
+    v2_margin = adaptive_qoc_margin(
+        min_side, base_margin=0.05, tiny_threshold=16.0, tiny_margin_bonus=0.10
+    )
+    v2 = quality_overconfidence_penalty(
+        confidence, quality, weight, margin=v2_margin, normalizer=4.0
+    )
+    assert v2 <= v1
+
+    # Non-tiny samples use the exact v1 margin.
+    non_tiny_v1 = quality_overconfidence_penalty(
+        confidence[2:], quality[2:], weight[2:], margin=0.05, normalizer=2.0
+    )
+    non_tiny_v2 = quality_overconfidence_penalty(
+        confidence[2:], quality[2:], weight[2:], margin=v2_margin[2:], normalizer=2.0
+    )
+    assert torch.allclose(non_tiny_v1, non_tiny_v2, atol=0, rtol=0)
+
+
 def test_qoc_metadata_validation():
     ch = (32, 64, 128)
-    try:
-        QualityOverconfidenceDetect(nc=10, qoc_lambda=-0.1, ch=ch)
-        raise AssertionError("negative qoc_lambda should fail")
-    except ValueError:
-        pass
-
-    try:
-        QualityOverconfidenceDetect(nc=10, qoc_margin=1.0, ch=ch)
-        raise AssertionError("qoc_margin >= 1 should fail")
-    except ValueError:
-        pass
+    invalid_kwargs = [
+        {"qoc_lambda": -0.1},
+        {"qoc_margin": 1.0},
+        {"qoc_tiny_threshold": 0.0},
+        {"qoc_tiny_margin_bonus": -0.1},
+        {"qoc_margin": 0.95, "qoc_tiny_margin_bonus": 0.10},
+    ]
+    for kwargs in invalid_kwargs:
+        try:
+            QualityOverconfidenceDetect(nc=10, ch=ch, **kwargs)
+            raise AssertionError(f"invalid metadata should fail: {kwargs}")
+        except ValueError:
+            pass
