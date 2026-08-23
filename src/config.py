@@ -26,6 +26,7 @@ CLASS_NAMES = [
 
 SPR_PLACEMENT_ORDER = ("p2_p3", "p3_p4", "p4_p5")
 SPR_PLACEMENT_SET = set(SPR_PLACEMENT_ORDER)
+HEAD_MODES = {"standard", "stride_reg"}
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -43,11 +44,6 @@ def _resolve_local_path(value: str | None, default: Path) -> str:
 
 
 def normalize_spr_placements(cfg: dict[str, Any]) -> list[str]:
-    """Return canonical SPR-Down placement names.
-
-    Legacy SPR configs without ``spr_placements`` are interpreted as the
-    original Stage-1 P4->P5 placement so older experiments remain readable.
-    """
     raw = cfg.get("spr_placements")
     if raw is None:
         return ["p4_p5"] if cfg.get("backbone_down") == "sprdown" else []
@@ -57,6 +53,13 @@ def normalize_spr_placements(cfg: dict[str, Any]) -> list[str]:
     if unknown:
         raise ValueError(f"Unknown SPR placements: {sorted(unknown)}")
     return [stage for stage in SPR_PLACEMENT_ORDER if stage in set(raw)]
+
+
+def normalize_head_bins(cfg: dict[str, Any]) -> list[int]:
+    raw = cfg.get("head_reg_bins", [])
+    if not isinstance(raw, (list, tuple)):
+        raise ValueError("head_reg_bins must be a list/tuple")
+    return [int(x) for x in raw]
 
 
 def load_config(
@@ -86,6 +89,9 @@ def load_config(
     resolved.update(deepcopy(presets[preset]))
     resolved["preset"] = preset
     resolved["spr_placements"] = normalize_spr_placements(resolved)
+    resolved["head_mode"] = resolved.get("head_mode", "standard")
+    resolved["head_reg_bins"] = normalize_head_bins(resolved)
+    resolved["study"] = resolved.get("study", "placement")
 
     resolved["dataset_root"] = str(Path(local["dataset_root"]).expanduser().resolve())
     resolved["dataset_format"] = local.get("dataset_format", "visdrone_official")
@@ -105,14 +111,10 @@ def load_config(
 
     resolved["project_root"] = str(ROOT)
     resolved["ultra_repo"] = str(ROOT / "third_party" / "ultralytics")
-    resolved["generated_dir"] = _resolve_local_path(
-        local.get("generated_dir"), ROOT / "generated"
-    )
+    resolved["generated_dir"] = _resolve_local_path(local.get("generated_dir"), ROOT / "generated")
     resolved["runs_dir"] = _resolve_local_path(local.get("runs_dir"), ROOT / "runs")
     resolved["state_dir"] = _resolve_local_path(local.get("state_dir"), ROOT / "state")
-    resolved["outputs_dir"] = _resolve_local_path(
-        local.get("outputs_dir"), ROOT / "outputs"
-    )
+    resolved["outputs_dir"] = _resolve_local_path(local.get("outputs_dir"), ROOT / "outputs")
 
     _validate(resolved)
     resolved["experiment_tag"] = experiment_tag(resolved)
@@ -128,6 +130,8 @@ def _validate(cfg: dict[str, Any]) -> None:
         raise ValueError(cfg["attention"])
     if int(cfg["reg_max"]) not in {1, 2, 4, 8, 16}:
         raise ValueError(cfg["reg_max"])
+    if cfg.get("head_mode", "standard") not in HEAD_MODES:
+        raise ValueError(cfg.get("head_mode"))
     if cfg.get("dataset_format") not in {"visdrone_official", "yolo"}:
         raise ValueError("dataset_format must be 'visdrone_official' or 'yolo'")
     if cfg.get("pretrained", False):
@@ -141,14 +145,37 @@ def _validate(cfg: dict[str, Any]) -> None:
     if cfg["backbone_down"] == "aconv" and placements:
         raise ValueError("AConv legacy mode cannot be mixed with SPR placements")
 
-    # Placement study contract: architecture is the only variable.
-    if placements:
-        if cfg["loss_mode"] != "standard":
-            raise ValueError("SPR placement screening must keep standard loss")
-        if cfg["attention"] != "none":
-            raise ValueError("SPR placement screening must keep attention disabled")
-        if int(cfg["reg_max"]) != 16:
-            raise ValueError("SPR placement screening must keep reg_max=16")
+    study = cfg.get("study", "placement")
+    head_mode = cfg.get("head_mode", "standard")
+
+    if study == "placement":
+        if placements:
+            if cfg["loss_mode"] != "standard":
+                raise ValueError("SPR placement screening must keep standard loss")
+            if cfg["attention"] != "none":
+                raise ValueError("SPR placement screening must keep attention disabled")
+            if int(cfg["reg_max"]) != 16:
+                raise ValueError("SPR placement screening must keep reg_max=16")
+            if head_mode != "standard":
+                raise ValueError("SPR placement screening must keep the standard Detect head")
+
+    elif study == "head":
+        if placements != ["p4_p5"]:
+            raise ValueError("Head study is locked to the confirmed S1 SPR placement P4->P5")
+        if cfg["loss_mode"] != "standard" or cfg["attention"] != "none":
+            raise ValueError("Head study must keep standard loss and no attention")
+        if head_mode == "stride_reg":
+            bins = normalize_head_bins(cfg)
+            if len(bins) != 3:
+                raise ValueError("stride_reg head requires exactly three level bin counts")
+            if any(x not in {1, 2, 4, 8, 16} for x in bins):
+                raise ValueError("head_reg_bins values must be one of 1,2,4,8,16")
+            if bins != sorted(bins, reverse=True):
+                raise ValueError("head_reg_bins must be non-increasing from P2 to P4")
+        elif int(cfg["reg_max"]) != 1:
+            raise ValueError("Standard-head variant in the head study is reserved for the DFL-free reg_max=1 control")
+    else:
+        raise ValueError(f"Unknown study={study!r}")
 
     t = cfg["train"]
     if int(t["batch"]) != int(t["nbs"]):
@@ -159,21 +186,24 @@ def _validate(cfg: dict[str, Any]) -> None:
 
 
 def experiment_tag(cfg: dict[str, Any]) -> str:
-    if cfg["loss_mode"] == "standard":
-        loss_tag = "standard"
-    else:
-        nwd = cfg["nwd"]
-        loss_tag = (
-            f"ciou{int(float(nwd['ciou_weight']) * 100)}_"
-            f"nwd{int(float(nwd['nwd_weight']) * 100)}"
-        )
-
+    loss_tag = "standard" if cfg["loss_mode"] == "standard" else "hybrid"
     placements = normalize_spr_placements(cfg)
     if placements:
         short = {"p2_p3": "p2p3", "p3_p4": "p3p4", "p4_p5": "p4p5"}
         arch_tag = "spr-" + "-".join(short[p] for p in placements)
     else:
         arch_tag = cfg["backbone_down"]
+
+    if cfg.get("study", "placement") == "head":
+        if cfg.get("head_mode") == "stride_reg":
+            bins = "-".join(str(x) for x in normalize_head_bins(cfg))
+            head_tag = f"snr-{bins}"
+        else:
+            head_tag = "direct-r1"
+        return (
+            f"{arch_tag}_{head_tag}_{loss_tag}_attn-{cfg['attention']}_"
+            f"{int(cfg['train']['epochs'])}e_seed{int(cfg['seed'])}"
+        )
 
     return (
         f"{arch_tag}_reg{int(cfg['reg_max'])}_{loss_tag}_"
