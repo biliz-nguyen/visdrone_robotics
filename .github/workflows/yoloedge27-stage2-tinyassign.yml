@@ -1,0 +1,279 @@
+name: YOLOEdge27 Stage2 Tiny Assignment
+
+on:
+  push:
+    branches:
+      - research/yoloedge27-tinyassign-v1
+    paths:
+      - .github/workflows/yoloedge27-stage2-tinyassign.yml
+      - src/tiny_assigner.py
+      - src/config.py
+      - src/ultralytics_patch.py
+      - config/experiment.yaml
+      - scripts/sanity.py
+      - scripts/tiny_assignment_diagnostic.py
+      - tests/test_tiny_assigner.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  stage2-tinyassign:
+    runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
+    timeout-minutes: 240
+    env:
+      CUDA_VISIBLE_DEVICES: "0"
+      PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
+      DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
+      PRESET: edge27_spr_tcr_v1
+      EPOCHS: "5"
+      ROOT: /home/minh/yoloedge27_experiments/stage2/edge27_spr_tcr_v1_5e
+      REPORT_DIR: reports/yoloedge27/stage2/tinyassign_v1
+
+    steps:
+      - name: Checkout Stage2 research branch
+        uses: actions/checkout@v4
+
+      - name: Pre-flight
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "YOLOEdge27 Stage2: SPR-v1 + Tiny Candidate Recovery"
+          nvidia-smi
+          "$PYTHON_BIN" - <<'PY'
+          import torch
+          print('Torch:', torch.__version__)
+          print('CUDA:', torch.version.cuda)
+          print('CUDA available:', torch.cuda.is_available())
+          assert torch.cuda.is_available()
+          print('GPU:', torch.cuda.get_device_name(0))
+          PY
+          test -d "$DATASET/VisDrone2019-DET-train/images"
+          test -d "$DATASET/VisDrone2019-DET-val/images"
+
+      - name: Write clean runner-local config
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$ROOT"
+          mkdir -p "$ROOT/runs" "$ROOT/state" "$ROOT/outputs" "$ROOT/generated"
+          cat > config/local.yaml <<EOF
+          dataset_root: "$DATASET"
+          dataset_format: "visdrone_official"
+          train_images: "VisDrone2019-DET-train/images"
+          train_annotations: "VisDrone2019-DET-train/annotations"
+          val_images: "VisDrone2019-DET-val/images"
+          val_annotations: "VisDrone2019-DET-val/annotations"
+          test_images: "VisDrone2019-DET-test-dev/images"
+          test_annotations: "VisDrone2019-DET-test-dev/annotations"
+          test_image: ""
+          runs_dir: "$ROOT/runs"
+          state_dir: "$ROOT/state"
+          outputs_dir: "$ROOT/outputs"
+          generated_dir: "$ROOT/generated"
+          EOF
+
+      - name: Setup dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON_BIN="$PYTHON_BIN" bash setup_local.sh
+
+      - name: Lock Stage2 smoke protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import yaml
+          p = Path('config/experiment.yaml')
+          c = yaml.safe_load(p.read_text())
+          c['preset'] = 'edge27_spr_tcr_v1'
+          c['train']['epochs'] = 5
+          c['train']['batch'] = 8
+          c['train']['nbs'] = 16
+          c['train']['save_period'] = 1
+          c['train']['patience'] = 0
+          c['pretrained'] = False
+          p.write_text(yaml.safe_dump(c, sort_keys=False), encoding='utf-8')
+          print(p.read_text())
+          PY
+
+      - name: Unit tests
+        shell: bash
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" -m pytest -q tests/test_sprdown.py tests/test_tiny_assigner.py
+
+      - name: Architecture and assigner sanity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$REPORT_DIR"
+          "$PYTHON_BIN" scripts/sanity.py | tee "$REPORT_DIR/sanity.txt"
+
+      - name: Candidate-starvation diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/tiny_assignment_diagnostic.py \
+            --split train \
+            --output "$REPORT_DIR/train_candidate_diagnostic.json"
+          "$PYTHON_BIN" scripts/tiny_assignment_diagnostic.py \
+            --split val \
+            --output "$REPORT_DIR/val_candidate_diagnostic.json"
+
+      - name: Mechanism gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path(os.environ['REPORT_DIR']) / 'train_candidate_diagnostic.json'
+          d = json.loads(p.read_text())
+          starved = float(d['tiny']['starved_fraction'])
+          focus = float(d['pedestrian_people_tiny']['starved_fraction'])
+          # A 5% threshold is a pre-declared screening gate, not a paper claim.
+          should = starved >= 0.05
+          print(f'tiny starved fraction: {starved:.4f}')
+          print(f'pedestrian+people tiny starved fraction: {focus:.4f}')
+          print('5e smoke:', 'RUN' if should else 'SKIP')
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write(f"SHOULD_TRAIN={'true' if should else 'false'}\n")
+          out = {
+              'gate': 'PASS_RUN_5E' if should else 'FAIL_REDIRECT',
+              'threshold': 0.05,
+              'tiny_starved_fraction': starved,
+              'pedestrian_people_tiny_starved_fraction': focus,
+              'note': 'screening diagnostic only; augmentation changes per-batch object geometry',
+          }
+          (Path(os.environ['REPORT_DIR']) / 'gate.json').write_text(
+              json.dumps(out, indent=2) + '\n'
+          )
+          PY
+
+      - name: Train TCR 5e smoke
+        if: ${{ env.SHOULD_TRAIN == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/train.py
+
+      - name: Locate best checkpoint
+        if: ${{ env.SHOULD_TRAIN == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BEST=$("$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ['ROOT'])
+          pts = list(root.glob('runs/*/weights/best.pt'))
+          if not pts:
+              raise SystemExit('No best.pt after Stage2 smoke')
+          print(max(pts, key=lambda p: p.stat().st_mtime))
+          PY
+          )
+          test -f "$BEST"
+          echo "BEST=$BEST" >> "$GITHUB_ENV"
+          echo "BEST=$BEST"
+
+      - name: Evaluate TCR 5e smoke
+        if: ${{ env.SHOULD_TRAIN == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/eval_screening.py \
+            --weights "$BEST" \
+            --output "$REPORT_DIR/tcr_5e_eval.json"
+
+      - name: Build Stage2 comparison summary
+        if: ${{ env.SHOULD_TRAIN == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" - <<'PY'
+          import csv, json, os
+          from pathlib import Path
+
+          report = Path(os.environ['REPORT_DIR'])
+          root = Path(os.environ['ROOT'])
+          tcr_csv = max(root.glob('runs/*/results.csv'), key=lambda p: p.stat().st_mtime)
+          tcr_eval = json.loads((report / 'tcr_5e_eval.json').read_text())
+
+          control_csv = Path('reports/yoloedge27/stage1/edge27_spr_v1_50e_results.csv')
+
+          def row_for_epoch(path, epoch_number=5):
+              rows = list(csv.DictReader(path.open()))
+              # Ultralytics reports epoch values as 1-based integers in this project.
+              for row in rows:
+                  try:
+                      if int(float(row['epoch'])) == epoch_number:
+                          return row
+                  except Exception:
+                      pass
+              if len(rows) >= epoch_number:
+                  return rows[epoch_number - 1]
+              raise RuntimeError(f'Cannot find epoch {epoch_number} in {path}')
+
+          def metrics(row):
+              def get(*names):
+                  for n in names:
+                      if n in row:
+                          return float(row[n])
+                  raise KeyError(names)
+              return {
+                  'map50': get('metrics/mAP50(B)', 'metrics/mAP50'),
+                  'map50_95': get('metrics/mAP50-95(B)', 'metrics/mAP50-95'),
+              }
+
+          tcr5 = metrics(row_for_epoch(tcr_csv, 5))
+          control5 = metrics(row_for_epoch(control_csv, 5))
+          summary = {
+              'purpose': '5e mechanism/trainability screening only; not paper evidence',
+              'control': 'SPR-Down v1 + standard TAL, epoch-5 row from its completed 50e local run',
+              'candidate_gate': json.loads((report / 'gate.json').read_text()),
+              'control_epoch5': control5,
+              'tcr_epoch5': tcr5,
+              'delta_epoch5': {
+                  'map50': tcr5['map50'] - control5['map50'],
+                  'map50_95': tcr5['map50_95'] - control5['map50_95'],
+              },
+              'tcr_best_5e_eval': tcr_eval,
+              'caution': 'deterministic=false; early-epoch deltas are only a screening signal',
+          }
+          (report / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
+          print(json.dumps(summary, indent=2))
+          PY
+
+      - name: Save compact Stage2 report
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$REPORT_DIR"
+          if [ "${SHOULD_TRAIN:-false}" = "true" ]; then
+            RESULTS=$(find "$ROOT/runs" -type f -name results.csv | head -1 || true)
+            ARGS=$(find "$ROOT/runs" -type f -name args.yaml | head -1 || true)
+            [ -n "$RESULTS" ] && cp "$RESULTS" "$REPORT_DIR/tcr_5e_results.csv" || true
+            [ -n "$ARGS" ] && cp "$ARGS" "$REPORT_DIR/tcr_5e_args.yaml" || true
+          fi
+          {
+            echo "branch=research/yoloedge27-tinyassign-v1"
+            echo "preset=$PRESET"
+            echo "epochs=$EPOCHS"
+            echo "should_train=${SHOULD_TRAIN:-unknown}"
+            echo "note=local Stage2 screening; final paper evidence must use locked Kaggle protocol"
+          } > "$REPORT_DIR/paths.txt"
+
+          git config user.name "yoloedge27-runner"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$REPORT_DIR"
+          if ! git diff --cached --quiet; then
+            git commit -m "Record Stage2 tiny assignment screening"
+            git push origin HEAD:research/yoloedge27-tinyassign-v1
+          fi
