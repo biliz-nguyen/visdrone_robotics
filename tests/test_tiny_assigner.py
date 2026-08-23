@@ -1,5 +1,18 @@
 from __future__ import annotations
 
+from pathlib import Path
+import sys
+
+# Unit tests must import the repository-pinned Ultralytics checkout, not any
+# unrelated package that may already be installed in the runner environment.
+ROOT = Path(__file__).resolve().parents[1]
+ULTRA_REPO = ROOT / "third_party" / "ultralytics"
+if not ULTRA_REPO.exists():
+    raise RuntimeError(
+        f"Pinned Ultralytics checkout is missing: {ULTRA_REPO}. Run setup_local.sh first."
+    )
+sys.path.insert(0, str(ULTRA_REPO))
+
 import torch
 
 from src.tiny_assigner import TinyCandidateRecoveryAssigner
@@ -21,6 +34,14 @@ def _grid(step=4, size=24):
     coords = torch.arange(step / 2, size, step)
     yy, xx = torch.meshgrid(coords, coords, indexing="ij")
     return torch.stack((xx.reshape(-1), yy.reshape(-1)), dim=-1)
+
+
+def test_pinned_ultralytics_import_is_available():
+    import ultralytics
+    from ultralytics.utils.tal import TaskAlignedAssigner
+
+    assert TaskAlignedAssigner is not None
+    assert Path(ultralytics.__file__).resolve().is_relative_to(ULTRA_REPO.resolve())
 
 
 def test_ultralytics_builtin_tiny_expansion_is_preserved():
