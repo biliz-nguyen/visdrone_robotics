@@ -4,7 +4,7 @@
 # Assignment, loss, head, attention, and reg_max are frozen.
 # ============================================================
 
-preset: "edge27_spr_p4p5"
+preset: "edge27_spr_p3p4"
 
 ultralytics_tag: "v8.4.56"
 
@@ -72,8 +72,7 @@ presets:
 
 # -------------------------
 # Fair placement-screen protocol
-# The workflow overrides epochs/batch only for the approved local 5e screen.
-# Everything else remains identical across all eight variants.
+# Everything except the SPR-Down location is frozen.
 # -------------------------
 train:
   imgsz: 640
