@@ -74,10 +74,11 @@ def main():
         assert len(attn_modules) == 1
         assert attn_modules[0].__class__.__name__ == expected_class
 
-    # Instantiate the real detection criterion to verify the patched assigner.
     criterion = v8DetectionLoss(model.model)
     assigner_name = criterion.assigner.__class__.__name__
-    if cfg.get("assigner_mode", "standard") == "tiny_recovery":
+    mode = cfg.get("assigner_mode", "standard")
+
+    if mode == "tiny_recovery":
         assert assigner_name == "TinyCandidateRecoveryAssigner"
         assert criterion.assigner.tiny_min_side == float(
             cfg["tiny_assigner"]["tiny_min_side"]
@@ -85,11 +86,19 @@ def main():
         assert criterion.assigner.min_candidates == int(
             cfg["tiny_assigner"]["min_candidates"]
         )
+    elif mode == "tiny_quality":
+        assert assigner_name == "TinyAdaptiveQualityAssigner"
+        assert criterion.assigner.tiny_min_side == float(
+            cfg["tiny_quality_assigner"]["tiny_min_side"]
+        )
+        assert criterion.assigner.beta_floor == float(
+            cfg["tiny_quality_assigner"]["beta_floor"]
+        )
+        assert float(criterion.assigner.beta) == 6.0
     else:
         assert assigner_name == "TaskAlignedAssigner"
 
-    # Q1 Stage-2 contract: only assignment changes on top of SPR-Down v1.
-    if cfg.get("assigner_mode") == "tiny_recovery":
+    if mode in {"tiny_recovery", "tiny_quality"}:
         assert cfg["backbone_down"] == "sprdown"
         assert cfg["loss_mode"] == "standard"
         assert int(cfg["reg_max"]) == 16
@@ -134,9 +143,13 @@ def main():
     print("Experiment:", cfg["experiment_tag"])
     print("Backbone downsample:", cfg["backbone_down"])
     print("Assigner:", assigner_name)
-    if cfg.get("assigner_mode") == "tiny_recovery":
+    if mode == "tiny_recovery":
         print("Tiny min side:", criterion.assigner.tiny_min_side)
         print("Min candidates:", criterion.assigner.min_candidates)
+    elif mode == "tiny_quality":
+        print("Tiny min side:", criterion.assigner.tiny_min_side)
+        print("Base beta:", criterion.assigner.beta)
+        print("Beta floor:", criterion.assigner.beta_floor)
     print("REAL reg_max:", detect.reg_max)
     print("REAL Detect.no:", detect.no)
     print("Strides:", strides)
