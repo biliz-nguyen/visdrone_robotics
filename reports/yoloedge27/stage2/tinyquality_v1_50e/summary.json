@@ -1,0 +1,229 @@
+{
+  "purpose": "Local fair 50e TAQ v1 screening; not final Kaggle paper evidence.",
+  "control": "SPR-Down v1 + standard TAL, completed local 50e run",
+  "tcr_reference": "SPR-Down v1 + TCR v1, completed local 50e run",
+  "candidate": "SPR-Down v1 + TAQ v1, local 50e run",
+  "change_only": "standard TAL candidate region retained; only tiny-object localization exponent beta changes during assignment",
+  "protocol_match": "same Stage1 optimizer/augmentation/imgsz/batch/nbs/seed; only assignment changes",
+  "control_50e": {
+    "precision": 0.4072744763733994,
+    "recall": 0.32474938272400605,
+    "map50": 0.3032701546493718,
+    "map50_95": 0.17178436230979457
+  },
+  "tcr_50e": {
+    "precision": 0.4260573103288996,
+    "recall": 0.3163187693830847,
+    "map50": 0.3021760401284487,
+    "map50_95": 0.17160781198149447
+  },
+  "taq_50e": {
+    "precision": 0.41126315889836995,
+    "recall": 0.3271406408302988,
+    "map50": 0.30391313326857905,
+    "map50_95": 0.17373349404559107
+  },
+  "delta_taq_vs_control": {
+    "precision": 0.003988682524970533,
+    "recall": 0.0023912581062927596,
+    "map50": 0.0006429786192072573,
+    "map50_95": 0.0019491317357965
+  },
+  "delta_taq_vs_tcr": {
+    "precision": -0.014794151430529645,
+    "recall": 0.010821871447214138,
+    "map50": 0.0017370931401303746,
+    "map50_95": 0.0021256820640966068
+  },
+  "focus": {
+    "pedestrian": {
+      "control": {
+        "precision": 0.392798016465445,
+        "recall": 0.4090909090909091,
+        "map50": 0.3550641540810743,
+        "map50_95": 0.15159724592513762
+      },
+      "tcr": {
+        "precision": 0.4028677122911026,
+        "recall": 0.40027137042062416,
+        "map50": 0.35209002374283055,
+        "map50_95": 0.14904509655608025
+      },
+      "taq": {
+        "precision": 0.38321052881661655,
+        "recall": 0.4257123473541384,
+        "map50": 0.36339523224265535,
+        "map50_95": 0.1547738999208403
+      },
+      "delta_taq_vs_control": {
+        "precision": -0.009587487648828441,
+        "recall": 0.01662143826322926,
+        "map50": 0.008331078161581074,
+        "map50_95": 0.0031766539957026885
+      },
+      "delta_taq_vs_tcr": {
+        "precision": -0.01965718347448603,
+        "recall": 0.025440976933514214,
+        "map50": 0.011305208499824804,
+        "map50_95": 0.00572880336476006
+      }
+    },
+    "people": {
+      "control": {
+        "precision": 0.46702300365873683,
+        "recall": 0.3017732000671955,
+        "map50": 0.28795123841296055,
+        "map50_95": 0.10460663481030316
+      },
+      "tcr": {
+        "precision": 0.46712911332520357,
+        "recall": 0.279219512195122,
+        "map50": 0.2732359445222336,
+        "map50_95": 0.098173233043124
+      },
+      "taq": {
+        "precision": 0.47101136234267427,
+        "recall": 0.2946341463414634,
+        "map50": 0.2893376910022142,
+        "map50_95": 0.10701192883235933
+      },
+      "delta_taq_vs_control": {
+        "precision": 0.003988358683937432,
+        "recall": -0.007139053725732092,
+        "map50": 0.0013864525892536284,
+        "map50_95": 0.0024052940220561647
+      },
+      "delta_taq_vs_tcr": {
+        "precision": 0.003882249017470696,
+        "recall": 0.015414634146341422,
+        "map50": 0.016101746479980583,
+        "map50_95": 0.008838695789235324
+      }
+    }
+  },
+  "train_beta_diagnostic": {
+    "split": "train",
+    "imgsz": 640,
+    "base_beta": 6.0,
+    "beta_floor": 4.0,
+    "tiny_min_side_px": 16.0,
+    "schedule": "beta_floor + (base_beta-beta_floor)*clamp(min_side/tiny_min_side,0,1)",
+    "objects": 343202,
+    "affected_objects": 266021,
+    "affected_fraction": 0.775114946882594,
+    "beta_all": {
+      "count": 343202,
+      "mean": 5.1694932932735265,
+      "median": 5.0833336,
+      "p10": 4.4,
+      "p25": 4.628571389714286,
+      "p75": 5.8799998,
+      "p90": 6.0,
+      "min": 4.041753483089771,
+      "max": 6.0
+    },
+    "beta_affected": {
+      "count": 266021,
+      "mean": 4.928537360727391,
+      "median": 4.857143199999999,
+      "p10": 4.3529408,
+      "p25": 4.542797530688936,
+      "p75": 5.2571432,
+      "p90": 5.6399998,
+      "min": 4.041753483089771,
+      "max": 5.9999998354285715
+    },
+    "pedestrian_people": {
+      "objects": 106395,
+      "affected_objects": 101165,
+      "affected_fraction": 0.9508435546783214,
+      "beta_all": {
+        "count": 106395,
+        "mean": 4.806078013823379,
+        "median": 4.6857144,
+        "p10": 4.2916664,
+        "p25": 4.44,
+        "p75": 5.0588232,
+        "p90": 5.5600000000000005,
+        "min": 4.041753483089771,
+        "max": 6.0
+      },
+      "beta_affected": {
+        "count": 101165,
+        "mean": 4.744354967436746,
+        "median": 4.6470592,
+        "p10": 4.2857144,
+        "p25": 4.4166664,
+        "p75": 4.9714288,
+        "p90": 5.36,
+        "min": 4.041753483089771,
+        "max": 5.9999998354285715
+      }
+    },
+    "interpretation": "TAQ keeps the standard TAL candidate region and changes only the localization exponent for GTs below the tiny threshold; non-tiny GTs remain beta=6 exactly."
+  },
+  "val_beta_diagnostic": {
+    "split": "val",
+    "imgsz": 640,
+    "base_beta": 6.0,
+    "beta_floor": 4.0,
+    "tiny_min_side_px": 16.0,
+    "schedule": "beta_floor + (base_beta-beta_floor)*clamp(min_side/tiny_min_side,0,1)",
+    "objects": 38759,
+    "affected_objects": 30934,
+    "affected_fraction": 0.7981114063830336,
+    "beta_all": {
+      "count": 38759,
+      "mean": 5.171488061046467,
+      "median": 5.0833336,
+      "p10": 4.4166664,
+      "p25": 4.6470592,
+      "p75": 5.76470605,
+      "p90": 6.0,
+      "min": 4.1176471,
+      "max": 6.0
+    },
+    "beta_affected": {
+      "count": 30934,
+      "mean": 4.961909412235728,
+      "median": 4.8823528,
+      "p10": 4.4117648,
+      "p25": 4.5833336,
+      "p75": 5.2941176500000005,
+      "p90": 5.6470592,
+      "min": 4.1176471,
+      "max": 5.9999998
+    },
+    "pedestrian_people": {
+      "objects": 13969,
+      "affected_objects": 13429,
+      "affected_fraction": 0.9613429737275395,
+      "beta_all": {
+        "count": 13969,
+        "mean": 4.826128301721669,
+        "median": 4.7058824,
+        "p10": 4.3529408,
+        "p25": 4.470588,
+        "p75": 5.0588232,
+        "p90": 5.52941185,
+        "min": 4.1176472,
+        "max": 6.0
+      },
+      "beta_affected": {
+        "count": 13429,
+        "mean": 4.77892518033733,
+        "median": 4.7058824,
+        "p10": 4.3529408,
+        "p25": 4.470588,
+        "p75": 5.0,
+        "p90": 5.352940800000001,
+        "min": 4.1176472,
+        "max": 5.9999998
+      }
+    },
+    "interpretation": "TAQ keeps the standard TAL candidate region and changes only the localization exponent for GTs below the tiny threshold; non-tiny GTs remain beta=6 exactly."
+  },
+  "candidate_weights": "/home/minh/yoloedge27_experiments/stage2/edge27_spr_taq_v1_50e/runs/sprdown_reg16_standard_taq_attn-none_50e_seed42/weights/best.pt",
+  "decision_rule": "Keep TAQ as contribution candidate only if 50e convergence improves over standard TAL without harming pedestrian/people materially.",
+  "caution": "single local runs with deterministic=false; use for screening only."
+}
