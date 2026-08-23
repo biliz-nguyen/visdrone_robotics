@@ -1,0 +1,5 @@
+branch=research/yoloedge27-tinyassign-v1
+preset=edge27_spr_tcr_v1
+epochs=5
+should_train=unknown
+note=local Stage2 screening; final paper evidence must use locked Kaggle protocol
