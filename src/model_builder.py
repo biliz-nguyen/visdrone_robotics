@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import textwrap
 
-from src.config import normalize_spr_placements
+from src.config import normalize_head_bins, normalize_spr_placements
 
 
 _STAGE_TO_CHANNELS = {
@@ -14,19 +14,22 @@ _STAGE_TO_CHANNELS = {
 
 
 def _downsample_line(cfg: dict, stage: str) -> str:
-    """Build one backbone downsample line for a named stage."""
     c2 = _STAGE_TO_CHANNELS[stage]
     placements = set(normalize_spr_placements(cfg))
-
     if stage in placements:
         module = "SPRDown"
     elif cfg["backbone_down"] == "aconv" and stage == "p4_p5":
-        # Legacy compatibility only; placement screening never uses AConv.
         module = "AConv"
     else:
         module = "Conv"
-
     return f"  - [-1, 1, {module}, [{c2}, 3, 2]]"
+
+
+def _detect_line(cfg: dict, indices: list[int]) -> str:
+    if cfg.get("head_mode", "standard") == "stride_reg":
+        bins = normalize_head_bins(cfg)
+        return f"  - [{indices}, 1, StrideRegDetect, [nc, {bins}]]"
+    return f"  - [{indices}, 1, Detect, [nc]]"
 
 
 def build_model_yaml(cfg: dict) -> Path:
@@ -44,28 +47,24 @@ def build_model_yaml(cfg: dict) -> Path:
     if attn == "none":
         attention_line = None
     elif attn == "eca":
-        attention_line = (
-            "  - [-1, 1, ECA, "
-            f"[128, {int(attention_cfg['eca_kernel'])}]]"
-        )
+        attention_line = f"  - [-1, 1, ECA, [128, {int(attention_cfg['eca_kernel'])}]]"
     elif attn == "ca":
         attention_line = (
             "  - [-1, 1, CoordAtt, "
-            f"[128, {int(attention_cfg['ca_reduction'])}, "
-            f"{int(attention_cfg['ca_min_channels'])}]]"
+            f"[128, {int(attention_cfg['ca_reduction'])}, {int(attention_cfg['ca_min_channels'])}]]"
         )
     elif attn == "rlca":
         attention_line = (
             "  - [-1, 1, ResidualLiteCA, "
-            f"[128, {int(attention_cfg['ca_reduction'])}, "
-            f"{int(attention_cfg['ca_min_channels'])}, "
+            f"[128, {int(attention_cfg['ca_reduction'])}, {int(attention_cfg['ca_min_channels'])}, "
             f"{float(attention_cfg['rlca_alpha_init'])}]]"
         )
     else:
         raise ValueError(attn)
 
     if attn == "none":
-        head = """
+        detect_line = _detect_line(cfg, [19, 22, 25])
+        head = f"""
 head:
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 6], 1, Concat, [1]]
@@ -87,9 +86,10 @@ head:
   - [[-1, 13], 1, Concat, [1]]
   - [-1, 2, C3k2, [512, false]]
 
-  - [[19, 22, 25], 1, Detect, [nc]]
+{detect_line}
 """
     else:
+        detect_line = _detect_line(cfg, [20, 23, 26])
         head = f"""
 head:
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
@@ -114,7 +114,7 @@ head:
   - [[-1, 13], 1, Concat, [1]]
   - [-1, 2, C3k2, [512, false]]
 
-  - [[20, 23, 26], 1, Detect, [nc]]
+{detect_line}
 """
 
     text = f"""
@@ -141,8 +141,5 @@ backbone:
 {head}
 """
 
-    model_yaml.write_text(
-        textwrap.dedent(text).strip() + "\n",
-        encoding="utf-8",
-    )
+    model_yaml.write_text(textwrap.dedent(text).strip() + "\n", encoding="utf-8")
     return model_yaml
