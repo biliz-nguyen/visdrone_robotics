@@ -17,7 +17,6 @@ def ensure_repo(cfg: dict) -> Path:
             "Run: bash setup_local.sh"
         )
 
-    # Lock source to requested tag.
     subprocess.run(
         ["git", "-C", str(repo), "checkout", "--force", tag],
         check=True,
@@ -40,8 +39,9 @@ def patch_ultralytics(cfg: dict) -> None:
     module_dir = repo / "ultralytics" / "nn" / "modules"
     custom_dst = module_dir / "visdrone_custom_blocks.py"
     custom_src = Path(cfg["project_root"]) / "src" / "custom_blocks.py"
+    spr_v2_dst = module_dir / "visdrone_sprdown_v2.py"
+    spr_v2_src = Path(cfg["project_root"]) / "src" / "sprdown_v2.py"
 
-    # Restore exactly the files that we patch.
     subprocess.run(
         [
             "git",
@@ -57,14 +57,14 @@ def patch_ultralytics(cfg: dict) -> None:
     )
 
     shutil.copy2(custom_src, custom_dst)
+    shutil.copy2(spr_v2_src, spr_v2_dst)
 
     _patch_tasks(tasks_py)
 
     if cfg["loss_mode"] == "hybrid_nwd":
         _patch_loss(loss_py, cfg)
 
-    # Syntax checks.
-    for path in [tasks_py, loss_py, custom_dst]:
+    for path in [tasks_py, loss_py, custom_dst, spr_v2_dst]:
         compile(
             path.read_text(encoding="utf-8"),
             str(path),
@@ -75,21 +75,26 @@ def patch_ultralytics(cfg: dict) -> None:
 def _patch_tasks(tasks_py: Path) -> None:
     text = tasks_py.read_text(encoding="utf-8")
 
-    import_line = (
-        "from ultralytics.nn.modules.visdrone_custom_blocks "
-        "import SPRDown, AConv, ECA, CoordAtt, ResidualLiteCA"
-    )
+    import_lines = [
+        (
+            "from ultralytics.nn.modules.visdrone_custom_blocks "
+            "import SPRDown, AConv, ECA, CoordAtt, ResidualLiteCA"
+        ),
+        (
+            "from ultralytics.nn.modules.visdrone_sprdown_v2 "
+            "import SPRDownV2"
+        ),
+    ]
 
-    if import_line not in text:
-        idx = text.find("class BaseModel")
-        if idx == -1:
-            raise RuntimeError(
-                "Cannot find class BaseModel in tasks.py"
-            )
+    idx = text.find("class BaseModel")
+    if idx == -1:
+        raise RuntimeError("Cannot find class BaseModel in tasks.py")
 
+    missing_imports = [line for line in import_lines if line not in text]
+    if missing_imports:
         text = (
             text[:idx]
-            + import_line
+            + "\n".join(missing_imports)
             + "\n\n"
             + text[idx:]
         )
@@ -103,20 +108,17 @@ def _patch_tasks(tasks_py: Path) -> None:
     )
 
     if base_match is None:
-        raise RuntimeError(
-            "Cannot find base_modules in tasks.py"
-        )
+        raise RuntimeError("Cannot find base_modules in tasks.py")
 
     body = base_match.group("body")
-
     needed = [
         "SPRDown",
+        "SPRDownV2",
         "AConv",
         "ECA",
         "CoordAtt",
         "ResidualLiteCA",
     ]
-
     missing = [
         name
         for name in needed
@@ -128,7 +130,6 @@ def _patch_tasks(tasks_py: Path) -> None:
             f"\n            {name},"
             for name in missing
         )
-
         text = (
             text[:base_match.start("body")]
             + insertion
@@ -136,46 +137,29 @@ def _patch_tasks(tasks_py: Path) -> None:
             + text[base_match.end("body"):]
         )
 
-    tasks_py.write_text(
-        text,
-        encoding="utf-8",
-    )
+    tasks_py.write_text(text, encoding="utf-8")
 
 
 def _patch_loss(loss_py: Path, cfg: dict) -> None:
     nwd_cfg = cfg["nwd"]
-
     nwd_c = float(nwd_cfg["c"])
     ciou_weight = float(nwd_cfg["ciou_weight"])
     nwd_weight = float(nwd_cfg["nwd_weight"])
 
-    loss_text = loss_py.read_text(
-        encoding="utf-8"
-    )
-
-    bbox_start = loss_text.find(
-        "class BboxLoss(nn.Module):"
-    )
+    loss_text = loss_py.read_text(encoding="utf-8")
+    bbox_start = loss_text.find("class BboxLoss(nn.Module):")
 
     if bbox_start == -1:
-        raise RuntimeError(
-            "Cannot find BboxLoss in loss.py"
-        )
+        raise RuntimeError("Cannot find BboxLoss in loss.py")
 
     next_class_match = re.search(
         r"\nclass\s+[A-Za-z_][A-Za-z0-9_]*"
         r"(?:\([^)]*\))?:",
-        loss_text[
-            bbox_start
-            + len("class BboxLoss(nn.Module):")
-            :
-        ],
+        loss_text[bbox_start + len("class BboxLoss(nn.Module):"):],
     )
 
     if next_class_match is None:
-        raise RuntimeError(
-            "Cannot find class after BboxLoss"
-        )
+        raise RuntimeError("Cannot find class after BboxLoss")
 
     bbox_end = (
         bbox_start
@@ -188,70 +172,28 @@ def _patch_loss(loss_py: Path, cfg: dict) -> None:
 class BboxLoss(nn.Module):
     def __init__(self, reg_max: int = 16):
         super().__init__()
-        self.dfl_loss = (
-            DFLoss(reg_max)
-            if reg_max > 1
-            else None
-        )
+        self.dfl_loss = DFLoss(reg_max) if reg_max > 1 else None
         self.nwd_constant = {nwd_c}
 
     @staticmethod
-    def _xyxy_to_nwd_vector(
-        boxes: torch.Tensor,
-    ) -> torch.Tensor:
+    def _xyxy_to_nwd_vector(boxes: torch.Tensor) -> torch.Tensor:
         x1 = boxes[..., 0]
         y1 = boxes[..., 1]
         x2 = boxes[..., 2]
         y2 = boxes[..., 3]
-
         cx = (x1 + x2) * 0.5
         cy = (y1 + y2) * 0.5
+        w = (x2 - x1).clamp_min(0.0)
+        h = (y2 - y1).clamp_min(0.0)
+        return torch.stack((cx, cy, w * 0.5, h * 0.5), dim=-1)
 
-        w = (
-            x2 - x1
-        ).clamp_min(0.0)
-
-        h = (
-            y2 - y1
-        ).clamp_min(0.0)
-
-        return torch.stack(
-            (
-                cx,
-                cy,
-                w * 0.5,
-                h * 0.5,
-            ),
-            dim=-1,
-        )
-
-    def _nwd_similarity(
-        self,
-        pred_boxes,
-        target_boxes,
-    ):
-        p = self._xyxy_to_nwd_vector(
-            pred_boxes.float()
-        )
-
-        t = self._xyxy_to_nwd_vector(
-            target_boxes.float()
-        )
-
+    def _nwd_similarity(self, pred_boxes, target_boxes):
+        p = self._xyxy_to_nwd_vector(pred_boxes.float())
+        t = self._xyxy_to_nwd_vector(target_boxes.float())
         distance = torch.sqrt(
-            (p - t)
-            .pow(2)
-            .sum(
-                dim=-1,
-                keepdim=True,
-            )
-            .clamp_min(1e-9)
+            (p - t).pow(2).sum(dim=-1, keepdim=True).clamp_min(1e-9)
         )
-
-        return torch.exp(
-            -distance
-            / self.nwd_constant
-        )
+        return torch.exp(-distance / self.nwd_constant)
 
     def forward(
         self,
@@ -265,49 +207,14 @@ class BboxLoss(nn.Module):
         imgsz,
         stride,
     ):
-        weight = (
-            target_scores
-            .sum(-1)[fg_mask]
-            .unsqueeze(-1)
-        )
-
+        weight = target_scores.sum(-1)[fg_mask].unsqueeze(-1)
         batch_size = pred_bboxes.shape[0]
-
-        stride_map = (
-            stride
-            .view(1, -1, 1)
-            .expand(
-                batch_size,
-                -1,
-                -1,
-            )
-        )
-
+        stride_map = stride.view(1, -1, 1).expand(batch_size, -1, -1)
         fg_stride = stride_map[fg_mask]
-
-        pred_px = (
-            pred_bboxes[fg_mask]
-            * fg_stride
-        )
-
-        target_px = (
-            target_bboxes[fg_mask]
-            * fg_stride
-        )
-
-        nwd = self._nwd_similarity(
-            pred_px,
-            target_px,
-        )
-
-        loss_nwd = (
-            (
-                (1.0 - nwd)
-                * weight.float()
-            )
-            .sum()
-            / target_scores_sum
-        )
+        pred_px = pred_bboxes[fg_mask] * fg_stride
+        target_px = target_bboxes[fg_mask] * fg_stride
+        nwd = self._nwd_similarity(pred_px, target_px)
+        loss_nwd = (((1.0 - nwd) * weight.float()).sum() / target_scores_sum)
 
         iou = bbox_iou(
             pred_bboxes[fg_mask],
@@ -315,22 +222,8 @@ class BboxLoss(nn.Module):
             xywh=False,
             CIoU=True,
         )
-
-        loss_ciou = (
-            (
-                (1.0 - iou)
-                * weight
-            )
-            .sum()
-            / target_scores_sum
-        )
-
-        loss_box = (
-            {ciou_weight}
-            * loss_ciou
-            + {nwd_weight}
-            * loss_nwd
-        )
+        loss_ciou = (((1.0 - iou) * weight).sum() / target_scores_sum)
+        loss_box = {ciou_weight} * loss_ciou + {nwd_weight} * loss_nwd
 
         if self.dfl_loss:
             target_ltrb = bbox2dist(
@@ -338,88 +231,39 @@ class BboxLoss(nn.Module):
                 target_bboxes,
                 self.dfl_loss.reg_max - 1,
             )
-
             loss_dfl = (
                 self.dfl_loss(
-                    pred_dist[fg_mask].view(
-                        -1,
-                        self.dfl_loss.reg_max,
-                    ),
+                    pred_dist[fg_mask].view(-1, self.dfl_loss.reg_max),
                     target_ltrb[fg_mask],
                 )
                 * weight
             )
-
-            loss_dfl = (
-                loss_dfl.sum()
-                / target_scores_sum
-            )
-
+            loss_dfl = loss_dfl.sum() / target_scores_sum
         else:
-            target_ltrb = bbox2dist(
-                anchor_points,
-                target_bboxes,
-            )
-
-            target_ltrb = (
-                target_ltrb
-                * stride
-            )
-
-            target_ltrb[
-                ...,
-                0::2
-            ] /= imgsz[1]
-
-            target_ltrb[
-                ...,
-                1::2
-            ] /= imgsz[0]
-
-            pred_dist = (
-                pred_dist
-                * stride
-            )
-
-            pred_dist[
-                ...,
-                0::2
-            ] /= imgsz[1]
-
-            pred_dist[
-                ...,
-                1::2
-            ] /= imgsz[0]
-
+            target_ltrb = bbox2dist(anchor_points, target_bboxes)
+            target_ltrb = target_ltrb * stride
+            target_ltrb[..., 0::2] /= imgsz[1]
+            target_ltrb[..., 1::2] /= imgsz[0]
+            pred_dist = pred_dist * stride
+            pred_dist[..., 0::2] /= imgsz[1]
+            pred_dist[..., 1::2] /= imgsz[0]
             loss_dfl = (
                 F.l1_loss(
                     pred_dist[fg_mask],
                     target_ltrb[fg_mask],
                     reduction="none",
                 )
-                .mean(
-                    -1,
-                    keepdim=True,
-                )
+                .mean(-1, keepdim=True)
                 * weight
             )
+            loss_dfl = loss_dfl.sum() / target_scores_sum
 
-            loss_dfl = (
-                loss_dfl.sum()
-                / target_scores_sum
-            )
-
-        return (
-            loss_box,
-            loss_dfl,
-        )
+        return loss_box, loss_dfl
 """
 
     loss_py.write_text(
         loss_text[:bbox_start]
-        + textwrap.dedent(
-            replacement
-        ).strip()
+        + textwrap.dedent(replacement).strip()
         + "\n\n"
         + loss_text[bbox_end:],
         encoding="utf-8",
