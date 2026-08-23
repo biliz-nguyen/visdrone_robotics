@@ -1,0 +1,10 @@
+branch=research/yoloedge27-head-dcr-v1
+head=af55e26717cda8742312567904c3d62e7c789f9d
+screen_root=/home/minh/yoloedge27_experiments/stage3/head_dcr_v1_5e
+controls=H0,H1 reused; NOT retrained
+new_variant=D1 only
+epochs=5
+backbone=S1 SPR P4->P5
+assignment=standard_TAL
+head=DCR P2 detail correction on DFL-free direct regression
+note=local screening only; checkpoints remain runner-local
