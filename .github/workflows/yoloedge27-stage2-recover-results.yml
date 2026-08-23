@@ -1,0 +1,253 @@
+name: YOLOEdge27 Stage2 Recover Results
+
+on:
+  push:
+    branches:
+      - research/yoloedge27-tinyassign-v1
+    paths:
+      - .github/workflows/yoloedge27-stage2-recover-results.yml
+  workflow_dispatch:
+
+concurrency:
+  group: yoloedge27-stage2-recover-results
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  recover-stage2-results:
+    runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
+    timeout-minutes: 120
+    env:
+      CUDA_VISIBLE_DEVICES: "0"
+      PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
+      DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
+      ROOT: /home/minh/yoloedge27_experiments/stage2/edge27_spr_tcr_v1_5e
+      REPORT_DIR: reports/yoloedge27/stage2/tinyassign_v1
+      PYTHONPATH: ${{ github.workspace }}/third_party/ultralytics:${{ github.workspace }}
+
+    steps:
+      - name: Checkout latest Stage2 branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/yoloedge27-tinyassign-v1
+          fetch-depth: 0
+
+      - name: Verify existing trained outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "HEAD=$(git rev-parse HEAD)"
+          test -d "$ROOT/runs"
+          "$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ['ROOT'])
+          results = list(root.glob('runs/*/results.csv'))
+          best = list(root.glob('runs/*/weights/best.pt'))
+          args = list(root.glob('runs/*/args.yaml'))
+          if not results:
+              raise SystemExit(f'No existing results.csv under {root}/runs; refusing to retrain')
+          if not best:
+              raise SystemExit(f'No existing best.pt under {root}/runs; refusing to retrain')
+          if not args:
+              raise SystemExit(f'No existing args.yaml under {root}/runs')
+          print('results:', max(results, key=lambda p: p.stat().st_mtime))
+          print('best:', max(best, key=lambda p: p.stat().st_mtime))
+          print('args:', max(args, key=lambda p: p.stat().st_mtime))
+          PY
+
+      - name: Write runner-local config
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT/outputs" "$ROOT/generated" "$ROOT/state" "$REPORT_DIR"
+          cat > config/local.yaml <<EOF
+          dataset_root: "$DATASET"
+          dataset_format: "visdrone_official"
+          train_images: "VisDrone2019-DET-train/images"
+          train_annotations: "VisDrone2019-DET-train/annotations"
+          val_images: "VisDrone2019-DET-val/images"
+          val_annotations: "VisDrone2019-DET-val/annotations"
+          test_images: "VisDrone2019-DET-test-dev/images"
+          test_annotations: "VisDrone2019-DET-test-dev/annotations"
+          test_image: ""
+          runs_dir: "$ROOT/runs"
+          state_dir: "$ROOT/state"
+          outputs_dir: "$ROOT/outputs"
+          generated_dir: "$ROOT/generated"
+          EOF
+
+      - name: Setup pinned dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON_BIN="$PYTHON_BIN" bash setup_local.sh
+
+      - name: Lock Stage2 config for recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import yaml
+          p = Path('config/experiment.yaml')
+          c = yaml.safe_load(p.read_text())
+          c['preset'] = 'edge27_spr_tcr_v1'
+          c['train']['epochs'] = 5
+          c['train']['batch'] = 8
+          c['train']['nbs'] = 16
+          c['train']['save_period'] = 1
+          c['train']['patience'] = 0
+          c['pretrained'] = False
+          p.write_text(yaml.safe_dump(c, sort_keys=False), encoding='utf-8')
+          PY
+
+      - name: Architecture and assigner sanity
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/sanity.py | tee "$REPORT_DIR/sanity.txt"
+
+      - name: Recompute candidate diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/tiny_assignment_diagnostic.py --split train --output "$REPORT_DIR/train_candidate_diagnostic.json"
+          "$PYTHON_BIN" scripts/tiny_assignment_diagnostic.py --split val --output "$REPORT_DIR/val_candidate_diagnostic.json"
+
+      - name: Recover checkpoint paths and evaluate
+        shell: bash
+        run: |
+          set -euo pipefail
+          BEST=$("$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ['ROOT'])
+          print(max(root.glob('runs/*/weights/best.pt'), key=lambda p: p.stat().st_mtime))
+          PY
+          )
+          RESULTS=$("$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ['ROOT'])
+          print(max(root.glob('runs/*/results.csv'), key=lambda p: p.stat().st_mtime))
+          PY
+          )
+          ARGS=$("$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ['ROOT'])
+          print(max(root.glob('runs/*/args.yaml'), key=lambda p: p.stat().st_mtime))
+          PY
+          )
+          test -f "$BEST"
+          test -f "$RESULTS"
+          test -f "$ARGS"
+          echo "BEST=$BEST" >> "$GITHUB_ENV"
+          echo "RESULTS=$RESULTS" >> "$GITHUB_ENV"
+          echo "ARGS=$ARGS" >> "$GITHUB_ENV"
+          "$PYTHON_BIN" scripts/eval_screening.py --weights "$BEST" --output "$REPORT_DIR/tcr_5e_eval.json"
+
+      - name: Build recovered Stage2 summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "$RESULTS" "$REPORT_DIR/tcr_5e_results.csv"
+          cp "$ARGS" "$REPORT_DIR/tcr_5e_args.yaml"
+          "$PYTHON_BIN" - <<'PY'
+          import csv, json, os
+          from pathlib import Path
+
+          report = Path(os.environ['REPORT_DIR'])
+          results = Path(os.environ['RESULTS'])
+          control = Path('reports/yoloedge27/stage1/edge27_spr_v1_50e_results.csv')
+
+          def rows(path):
+              with path.open(newline='') as f:
+                  return list(csv.DictReader(f))
+
+          def metric(row, *names):
+              for n in names:
+                  if n in row and row[n] != '':
+                      return float(row[n])
+              raise KeyError(names)
+
+          def pack(row):
+              return {
+                  'map50': metric(row, 'metrics/mAP50(B)', 'metrics/mAP50'),
+                  'map50_95': metric(row, 'metrics/mAP50-95(B)', 'metrics/mAP50-95'),
+                  'precision': metric(row, 'metrics/precision(B)', 'metrics/precision'),
+                  'recall': metric(row, 'metrics/recall(B)', 'metrics/recall'),
+              }
+
+          tr = rows(results)
+          cr = rows(control)
+          if len(tr) < 5:
+              raise RuntimeError(f'Expected 5 smoke epochs, got {len(tr)} rows')
+          tcr5 = pack(tr[4])
+          control5 = pack(cr[4])
+
+          train_diag = json.loads((report / 'train_candidate_diagnostic.json').read_text())
+          val_diag = json.loads((report / 'val_candidate_diagnostic.json').read_text())
+          best_eval = json.loads((report / 'tcr_5e_eval.json').read_text())
+
+          starved = float(train_diag['tiny']['starved_fraction'])
+          focus = float(train_diag['pedestrian_people_tiny']['starved_fraction'])
+          gate = {
+              'threshold': 0.05,
+              'tiny_starved_fraction': starved,
+              'pedestrian_people_tiny_starved_fraction': focus,
+              'gate': 'PASS_RUN_5E' if starved >= 0.05 else 'FAIL_REDIRECT',
+              'note': 'Recovered after training; diagnostic recomputed without retraining.'
+          }
+          (report / 'gate.json').write_text(json.dumps(gate, indent=2) + '\n')
+
+          summary = {
+              'purpose': 'Recovered local 5e Stage2 screening; no retraining performed by recovery job.',
+              'model': 'SPR-Down v1 + Tiny Candidate Recovery',
+              'control': 'SPR-Down v1 + standard TAL, epoch-5 row from completed 50e local run',
+              'candidate_gate': gate,
+              'control_epoch5': control5,
+              'tcr_epoch5': tcr5,
+              'delta_epoch5': {k: tcr5[k] - control5[k] for k in tcr5},
+              'tcr_best_5e_eval': best_eval,
+              'train_candidate_diagnostic': train_diag,
+              'val_candidate_diagnostic': val_diag,
+              'caution': 'deterministic=false; 5e is screening only and not paper evidence.'
+          }
+          (report / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
+          print(json.dumps(summary, indent=2))
+          PY
+
+      - name: Commit recovered reports only
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "branch=research/yoloedge27-tinyassign-v1"
+            echo "preset=edge27_spr_tcr_v1"
+            echo "epochs=5"
+            echo "recovered_without_retraining=true"
+            echo "best_pt=$BEST"
+            echo "results_csv=$RESULTS"
+            echo "head_before_report=$(git rev-parse HEAD)"
+            echo "note=local Stage2 screening; final paper evidence must use locked Kaggle protocol"
+          } > "$REPORT_DIR/paths.txt"
+
+          # Restore tracked runtime-edited config before committing, preventing the
+          # previous 'cannot pull with rebase: unstaged changes' failure.
+          git checkout -- config/experiment.yaml
+          git status --short
+
+          git config user.name "yoloedge27-runner"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$REPORT_DIR"
+          if git diff --cached --quiet; then
+            echo "No report changes to commit"
+            exit 0
+          fi
+          git commit -m "Recover Stage2 TCR 5e screening results"
+          git pull --rebase origin research/yoloedge27-tinyassign-v1
+          git push origin HEAD:research/yoloedge27-tinyassign-v1
