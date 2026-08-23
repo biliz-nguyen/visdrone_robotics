@@ -1,10 +1,10 @@
 # ============================================================
 # YOLOEdge27 — Q1 RESEARCH TRACK / HEAD QUALITY STUDY
 # Confirmed backbone: one SPR-Down at P4->P5 (S1).
-# Existing S1/H1/Q1 controls are reused; they are NOT retrained here.
+# Existing S1/H1/Q1/Q2 controls are reused; they are NOT retrained here.
 # ============================================================
 
-preset: "edge27_head_qoc_v2"
+preset: "edge27_head_qoc_v3"
 
 ultralytics_tag: "v8.4.56"
 
@@ -111,7 +111,7 @@ presets:
     head_mode: "stride_reg"
     head_reg_bins: [16, 4, 1]
 
-  # Q1: fixed-margin QOC control from the previous screen.
+  # Q1: fixed-margin QOC control.
   edge27_head_qoc_v1:
     study: "head"
     backbone_down: "sprdown"
@@ -125,9 +125,7 @@ presets:
     qoc_tiny_threshold: 16.0
     qoc_tiny_margin_bonus: 0.0
 
-  # Q2: tiny-aware QOC. Normal objects (min-side >=16 px) are exactly Q1.
-  # For smaller assigned GT boxes, margin increases continuously up to +0.10,
-  # reducing false overconfidence suppression caused by tiny-box IoU sensitivity.
+  # Q2 endpoint: stronger tiny tolerance (+0.10 at min-side -> 0 px).
   edge27_head_qoc_v2:
     study: "head"
     backbone_down: "sprdown"
@@ -140,6 +138,23 @@ presets:
     qoc_margin: 0.05
     qoc_tiny_threshold: 16.0
     qoc_tiny_margin_bonus: 0.10
+
+  # Q3: midpoint interpolation between Q1 and Q2.
+  # Same continuous tiny-aware rule, but +0.05 maximum bonus. This directly
+  # tests whether Q2's target-class recovery can be retained while recovering
+  # Q1's stronger aggregate calibration gain.
+  edge27_head_qoc_v3:
+    study: "head"
+    backbone_down: "sprdown"
+    spr_placements: ["p4_p5"]
+    reg_max: 1
+    loss_mode: "standard"
+    attention: "none"
+    head_mode: "quality_overconfidence"
+    qoc_lambda: 0.25
+    qoc_margin: 0.05
+    qoc_tiny_threshold: 16.0
+    qoc_tiny_margin_bonus: 0.05
 
 train:
   imgsz: 640
