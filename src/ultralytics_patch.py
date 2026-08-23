@@ -33,6 +33,7 @@ def patch_ultralytics(cfg: dict) -> None:
     copies = {
         project / "src" / "custom_blocks.py": module_dir / "visdrone_custom_blocks.py",
         project / "src" / "stride_reg_head.py": module_dir / "visdrone_stride_reg_head.py",
+        project / "src" / "detail_corrected_head.py": module_dir / "visdrone_detail_corrected_head.py",
         project / "src" / "stride_reg_loss.py": utils_dir / "visdrone_stride_reg_loss.py",
     }
     for src, dst in copies.items():
@@ -40,8 +41,6 @@ def patch_ultralytics(cfg: dict) -> None:
 
     _patch_tasks(tasks_py)
 
-    # This branch intentionally keeps the standard localization loss. The
-    # mixed-bin head has its own criterion but does not change TAL/CIoU/cls.
     if cfg["loss_mode"] != "standard":
         raise ValueError("Head-study branch supports standard loss only")
 
@@ -55,6 +54,7 @@ def _patch_tasks(tasks_py: Path) -> None:
     imports = [
         "from ultralytics.nn.modules.visdrone_custom_blocks import SPRDown, AConv, ECA, CoordAtt, ResidualLiteCA",
         "from ultralytics.nn.modules.visdrone_stride_reg_head import StrideRegDetect",
+        "from ultralytics.nn.modules.visdrone_detail_corrected_head import DetailCorrectedDetect",
     ]
     idx = text.find("class BaseModel")
     if idx == -1:
@@ -88,6 +88,9 @@ def _patch_tasks(tasks_py: Path) -> None:
         "        elif m is Concat:\n"
         "            c2 = sum(ch[x] for x in f)\n"
         "        elif m is StrideRegDetect:\n"
+        "            args.extend([end2end, [ch[x] for x in f]])\n"
+        "            m.legacy = legacy\n"
+        "        elif m is DetailCorrectedDetect:\n"
         "            args.extend([end2end, [ch[x] for x in f]])\n"
         "            m.legacy = legacy\n"
         "        elif m in frozenset(\n"
