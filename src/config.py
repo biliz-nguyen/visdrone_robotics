@@ -30,10 +30,8 @@ CLASS_NAMES = [
 def _read_yaml(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(path)
-
     with path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
-
     return data or {}
 
 
@@ -64,24 +62,21 @@ def load_config(
 
     preset = exp.get("preset")
     presets = exp.get("presets", {})
-
     if preset not in presets:
         raise ValueError(
-            f"Unknown preset={preset!r}. "
-            f"Available: {sorted(presets)}"
+            f"Unknown preset={preset!r}. Available: {sorted(presets)}"
         )
 
     resolved = deepcopy(exp)
     resolved.update(deepcopy(presets[preset]))
-
     resolved["preset"] = preset
+
     resolved["dataset_root"] = str(
         Path(local["dataset_root"]).expanduser().resolve()
     )
     resolved["dataset_format"] = local.get(
         "dataset_format", "visdrone_official"
     )
-
     resolved["train_images"] = local.get(
         "train_images", "VisDrone2019-DET-train/images"
     )
@@ -91,7 +86,6 @@ def load_config(
     resolved["test_images"] = local.get(
         "test_images", "VisDrone2019-DET-test-dev/images"
     )
-
     resolved["train_annotations"] = local.get(
         "train_annotations", "VisDrone2019-DET-train/annotations"
     )
@@ -101,13 +95,10 @@ def load_config(
     resolved["test_annotations"] = local.get(
         "test_annotations", "VisDrone2019-DET-test-dev/annotations"
     )
-
     resolved["test_image"] = local.get("test_image", "")
 
     resolved["project_root"] = str(ROOT)
-    resolved["ultra_repo"] = str(
-        ROOT / "third_party" / "ultralytics"
-    )
+    resolved["ultra_repo"] = str(ROOT / "third_party" / "ultralytics")
     resolved["generated_dir"] = _resolve_local_path(
         local.get("generated_dir"), ROOT / "generated"
     )
@@ -122,25 +113,24 @@ def load_config(
     )
 
     _validate(resolved)
-
     resolved["experiment_tag"] = experiment_tag(resolved)
-
     return resolved
 
 
 def _validate(cfg: dict[str, Any]) -> None:
     if cfg["backbone_down"] not in {"conv", "aconv", "sprdown"}:
         raise ValueError(cfg["backbone_down"])
-
     if cfg["loss_mode"] not in {"standard", "hybrid_nwd"}:
         raise ValueError(cfg["loss_mode"])
-
     if cfg["attention"] not in {"none", "eca", "ca", "rlca"}:
         raise ValueError(cfg["attention"])
-
+    if cfg.get("assigner_mode", "standard") not in {
+        "standard",
+        "tiny_recovery",
+    }:
+        raise ValueError(cfg.get("assigner_mode"))
     if int(cfg["reg_max"]) not in {1, 2, 4, 8, 16}:
         raise ValueError(cfg["reg_max"])
-
     if cfg.get("dataset_format") not in {
         "visdrone_official",
         "yolo",
@@ -148,11 +138,23 @@ def _validate(cfg: dict[str, Any]) -> None:
         raise ValueError(
             "dataset_format must be 'visdrone_official' or 'yolo'"
         )
-
     if cfg.get("pretrained", False):
         raise ValueError(
             "This project is locked to scratch training: pretrained=false"
         )
+
+    if cfg.get("assigner_mode") == "tiny_recovery":
+        tiny = cfg.get("tiny_assigner", {})
+        if float(tiny.get("tiny_min_side", 0)) <= 0:
+            raise ValueError("tiny_assigner.tiny_min_side must be > 0")
+        if int(tiny.get("min_candidates", 0)) < 1:
+            raise ValueError("tiny_assigner.min_candidates must be >= 1")
+        if cfg["loss_mode"] != "standard":
+            raise ValueError("Stage-2 tiny assignment must keep standard loss")
+        if cfg["attention"] != "none":
+            raise ValueError("Stage-2 tiny assignment must keep attention disabled")
+        if int(cfg["reg_max"]) != 16:
+            raise ValueError("Stage-2 tiny assignment must keep reg_max=16")
 
     t = cfg["train"]
     if int(t["batch"]) != int(t["nbs"]):
@@ -172,10 +174,17 @@ def experiment_tag(cfg: dict[str, Any]) -> str:
             f"nwd{int(float(nwd['nwd_weight']) * 100)}"
         )
 
+    assign_tag = (
+        "tal"
+        if cfg.get("assigner_mode", "standard") == "standard"
+        else "tcr"
+    )
+
     return (
         f"{cfg['backbone_down']}_"
         f"reg{int(cfg['reg_max'])}_"
         f"{loss_tag}_"
+        f"{assign_tag}_"
         f"attn-{cfg['attention']}_"
         f"{int(cfg['train']['epochs'])}e_"
         f"seed{int(cfg['seed'])}"
