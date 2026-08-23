@@ -1,10 +1,10 @@
 # ============================================================
 # YOLOEdge27 — Q1 RESEARCH TRACK / STAGE 2 REDESIGN
-# Goal: test tiny-adaptive TAL quality alignment on top of SPR-Down v1.
+# Goal: compare tiny-adaptive TAL quality schedules on top of SPR-Down v1.
 # Legacy AConv / NWD / attention and TCR recovery are intentionally NOT active.
 # ============================================================
 
-preset: "edge27_spr_taq_v1"
+preset: "edge27_spr_taq_v2"
 
 ultralytics_tag: "v8.4.56"
 
@@ -36,6 +36,19 @@ presets:
     loss_mode: "standard"
     attention: "none"
     assigner_mode: "tiny_quality"
+    tiny_quality_assigner:
+      tiny_min_side: 16.0
+      beta_floor: 4.0
+
+  edge27_spr_taq_v2:
+    backbone_down: "sprdown"
+    reg_max: 16
+    loss_mode: "standard"
+    attention: "none"
+    assigner_mode: "tiny_quality"
+    tiny_quality_assigner:
+      tiny_min_side: 16.0
+      beta_floor: 5.0
 
 # -------------------------
 # Fair train protocol
@@ -87,16 +100,10 @@ tiny_assigner:
   tiny_min_side: 16.0
   min_candidates: 4
 
-# -------------------------
-# Tiny-Adaptive Quality Alignment (TAQ) v1
-# Standard TAL uses beta=6.0 for every GT.
-# For min-side s <= 16px:
-#   beta_eff = beta_floor + (6-beta_floor) * clamp(s/16, 0, 1)
-# Non-tiny GTs therefore remain exactly beta=6.
-# -------------------------
+# Default TAQ config. TAQ v1/v2 override this inside their presets above.
 tiny_quality_assigner:
   tiny_min_side: 16.0
-  beta_floor: 4.0
+  beta_floor: 5.0
 
 # -------------------------
 # Reproducibility
