@@ -1,84 +1,127 @@
 # ============================================================
-# YOLOEdge27 — Q1 RESEARCH TRACK / SPR-DOWN PLACEMENT ABLATION
-# Goal: isolate where SPR-Down is useful in the backbone.
-# Assignment, loss, head, attention, and reg_max are frozen.
+# YOLOEdge27 — Q1 RESEARCH TRACK / HEAD STUDY
+# Confirmed backbone: one SPR-Down at P4->P5 (S1).
+# Existing S1 5e/50e controls are reused; they are NOT retrained here.
 # ============================================================
 
-preset: "edge27_spr_p4p5"
+preset: "edge27_head_snr_16_8_4"
 
 ultralytics_tag: "v8.4.56"
 
-# Placement names refer to the three backbone reductions after P2:
-#   p2_p3: P2 -> P3 (layer 3)
-#   p3_p4: P3 -> P4 (layer 5)
-#   p4_p5: P4 -> P5 (layer 7)
-# The eight presets below exhaust all 2^3 Conv/SPR placement combinations.
 presets:
+  # Existing placement presets retained for reproducibility.
   edge27_place_b0:
+    study: "placement"
     backbone_down: "conv"
     spr_placements: []
     reg_max: 16
     loss_mode: "standard"
     attention: "none"
+    head_mode: "standard"
 
   edge27_spr_p4p5:
+    study: "placement"
     backbone_down: "sprdown"
     spr_placements: ["p4_p5"]
     reg_max: 16
     loss_mode: "standard"
     attention: "none"
+    head_mode: "standard"
 
   edge27_spr_p3p4:
+    study: "placement"
     backbone_down: "sprdown"
     spr_placements: ["p3_p4"]
     reg_max: 16
     loss_mode: "standard"
     attention: "none"
+    head_mode: "standard"
 
   edge27_spr_p2p3:
+    study: "placement"
     backbone_down: "sprdown"
     spr_placements: ["p2_p3"]
     reg_max: 16
     loss_mode: "standard"
     attention: "none"
+    head_mode: "standard"
 
   edge27_spr_p3p4_p4p5:
+    study: "placement"
     backbone_down: "sprdown"
     spr_placements: ["p3_p4", "p4_p5"]
     reg_max: 16
     loss_mode: "standard"
     attention: "none"
+    head_mode: "standard"
 
   edge27_spr_p2p3_p3p4:
+    study: "placement"
     backbone_down: "sprdown"
     spr_placements: ["p2_p3", "p3_p4"]
     reg_max: 16
     loss_mode: "standard"
     attention: "none"
+    head_mode: "standard"
 
   edge27_spr_p2p3_p4p5:
+    study: "placement"
     backbone_down: "sprdown"
     spr_placements: ["p2_p3", "p4_p5"]
     reg_max: 16
     loss_mode: "standard"
     attention: "none"
+    head_mode: "standard"
 
   edge27_spr_all:
+    study: "placement"
     backbone_down: "sprdown"
     spr_placements: ["p2_p3", "p3_p4", "p4_p5"]
     reg_max: 16
     loss_mode: "standard"
     attention: "none"
+    head_mode: "standard"
+
+  # H1: deployment control. Stock Detect with global reg_max=1 (DFL-free).
+  edge27_head_direct_r1:
+    study: "head"
+    backbone_down: "sprdown"
+    spr_placements: ["p4_p5"]
+    reg_max: 1
+    loss_mode: "standard"
+    attention: "none"
+    head_mode: "standard"
+
+  # H2: primary head hypothesis. Fine P2 keeps 16 bins; coarser levels
+  # progressively reduce bins approximately with stride: 16 / 8 / 4.
+  edge27_head_snr_16_8_4:
+    study: "head"
+    backbone_down: "sprdown"
+    spr_placements: ["p4_p5"]
+    reg_max: 16
+    loss_mode: "standard"
+    attention: "none"
+    head_mode: "stride_reg"
+    head_reg_bins: [16, 8, 4]
+
+  # H3: aggressive tiny-preserving stress test. Keep P2 rich, compress P3/P4.
+  edge27_head_hybrid_16_4_1:
+    study: "head"
+    backbone_down: "sprdown"
+    spr_placements: ["p4_p5"]
+    reg_max: 16
+    loss_mode: "standard"
+    attention: "none"
+    head_mode: "stride_reg"
+    head_reg_bins: [16, 4, 1]
 
 # -------------------------
-# Fair placement-screen protocol
-# The workflow overrides epochs/batch only for the approved local 5e screen.
-# Everything else remains identical across all eight variants.
+# Fair train protocol. Head screening workflow overrides to 5 epochs.
 # -------------------------
 train:
   imgsz: 640
   epochs: 50
-  batch: 16
+  batch: 8
   nbs: 16
   workers: 4
 
@@ -119,13 +162,11 @@ train:
 seed: 42
 pretrained: false
 
-# Retained only for shared config schema; NOT active in placement screening.
 nwd:
   c: 12.8
   ciou_weight: 0.75
   nwd_weight: 0.25
 
-# Retained only for shared builder schema; attention is disabled here.
 attention_cfg:
   position: "P2_AFTER_C3K2"
   eca_kernel: 3
