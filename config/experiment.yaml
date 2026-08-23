@@ -1,15 +1,14 @@
 # ============================================================
-# YOLOEdge27 — Q1 RESEARCH TRACK / HEAD STUDY
+# YOLOEdge27 — Q1 RESEARCH TRACK / HEAD QUALITY STUDY
 # Confirmed backbone: one SPR-Down at P4->P5 (S1).
-# Existing S1 5e/50e controls are reused; they are NOT retrained here.
+# Existing S1/H1 controls are reused; they are NOT retrained here.
 # ============================================================
 
-preset: "edge27_head_snr_16_8_4"
+preset: "edge27_head_qoc_v1"
 
 ultralytics_tag: "v8.4.56"
 
 presets:
-  # Existing placement presets retained for reproducibility.
   edge27_place_b0:
     study: "placement"
     backbone_down: "conv"
@@ -82,7 +81,7 @@ presets:
     attention: "none"
     head_mode: "standard"
 
-  # H1: deployment control. Stock Detect with global reg_max=1 (DFL-free).
+  # H1: DFL-free efficiency control.
   edge27_head_direct_r1:
     study: "head"
     backbone_down: "sprdown"
@@ -92,8 +91,6 @@ presets:
     attention: "none"
     head_mode: "standard"
 
-  # H2: primary head hypothesis. Fine P2 keeps 16 bins; coarser levels
-  # progressively reduce bins approximately with stride: 16 / 8 / 4.
   edge27_head_snr_16_8_4:
     study: "head"
     backbone_down: "sprdown"
@@ -104,7 +101,6 @@ presets:
     head_mode: "stride_reg"
     head_reg_bins: [16, 8, 4]
 
-  # H3: aggressive tiny-preserving stress test. Keep P2 rich, compress P3/P4.
   edge27_head_hybrid_16_4_1:
     study: "head"
     backbone_down: "sprdown"
@@ -115,9 +111,21 @@ presets:
     head_mode: "stride_reg"
     head_reg_bins: [16, 4, 1]
 
-# -------------------------
-# Fair train protocol. Head screening workflow overrides to 5 epochs.
-# -------------------------
+  # Q1: Quality Overconfidence Constraint.
+  # Inference is identical to H1. During training only, positives whose class
+  # confidence exceeds detached localization IoU + margin receive an extra
+  # one-sided calibration penalty. Standard TAL/BCE/CIoU/direct-reg stay intact.
+  edge27_head_qoc_v1:
+    study: "head"
+    backbone_down: "sprdown"
+    spr_placements: ["p4_p5"]
+    reg_max: 1
+    loss_mode: "standard"
+    attention: "none"
+    head_mode: "quality_overconfidence"
+    qoc_lambda: 0.25
+    qoc_margin: 0.05
+
 train:
   imgsz: 640
   epochs: 50
