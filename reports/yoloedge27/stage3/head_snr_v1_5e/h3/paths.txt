@@ -1,0 +1,5 @@
+id=H3
+preset=edge27_head_hybrid_16_4_1
+root=/home/minh/yoloedge27_experiments/stage3/head_snr_v1_5e/h3_edge27_head_hybrid_16_4_1
+best_pt=/home/minh/yoloedge27_experiments/stage3/head_snr_v1_5e/h3_edge27_head_hybrid_16_4_1/runs/spr-p4p5_snr-16-4-1_standard_attn-none_5e_seed42/weights/best.pt
+note=local 5e head screening; checkpoint remains runner-local

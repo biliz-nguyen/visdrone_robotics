@@ -1,0 +1,243 @@
+{
+  "purpose": "Local 5e head mechanism screening; final paper evidence requires later locked confirmation.",
+  "novelty_status": "engineering hypothesis only; no novelty claim",
+  "control_policy": "H0 is reused from the existing S1 5e placement run and is not retrained.",
+  "protocol": {
+    "epochs_new_variants": 5,
+    "batch": 8,
+    "nbs": 16,
+    "workers": 4,
+    "imgsz": 640,
+    "optimizer": "AdamW",
+    "lr0": 0.0015,
+    "lrf": 0.05,
+    "weight_decay": 0.05,
+    "seed": 42,
+    "pretrained": false,
+    "backbone": "S1: one SPR-Down at P4->P5",
+    "assigner": "standard TAL",
+    "loss": "standard CIoU/BCE plus DFL or direct-reg term according to head bins",
+    "attention": "none"
+  },
+  "variants": {
+    "H0": {
+      "id": "H0",
+      "preset": "edge27_spr_p4p5",
+      "description": "REUSED existing S1: SPR P4->P5 + stock Detect reg_max=16",
+      "status": "reused_existing",
+      "rerun": false,
+      "complexity": {
+        "params": 1736638,
+        "gflops": 9.9122
+      },
+      "epoch5": {
+        "precision": 0.24109,
+        "recall": 0.19443,
+        "map50": 0.14213,
+        "map50_95": 0.07379
+      },
+      "best_eval": {
+        "precision": 0.24151772295054963,
+        "recall": 0.1947574970672591,
+        "map50": 0.14290891413848147,
+        "map50_95": 0.07412907581209939
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.17224715050248374,
+          "recall": 0.31094527363184077,
+          "map50": 0.14414284104116837,
+          "map50_95": 0.05106804110233591
+        },
+        "people": {
+          "precision": 0.4097181898089238,
+          "recall": 0.13177860499869562,
+          "map50": 0.1332432397945635,
+          "map50_95": 0.03979999138819667
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.1585121551155959,
+        "inference": 1.5381940602575896,
+        "loss": 0.00043448722119575675,
+        "postprocess": 2.6878321386770057
+      },
+      "source_results": "/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage1/spr_placement_v1_5e/s1/results.csv",
+      "source_eval": "/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage1/spr_placement_v1_5e/s1/best_eval.json",
+      "delta_best_eval_vs_h0": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "map50": 0.0,
+        "map50_95": 0.0
+      }
+    },
+    "H1": {
+      "id": "H1",
+      "preset": "edge27_head_direct_r1",
+      "description": "stock Detect, global reg_max=1 / DFL-free control",
+      "status": "complete",
+      "rerun": true,
+      "complexity": {
+        "params": 1523322,
+        "gflops": 6.0501
+      },
+      "epoch5": {
+        "precision": 0.32298,
+        "recall": 0.19148,
+        "map50": 0.13678,
+        "map50_95": 0.06809
+      },
+      "best_eval": {
+        "precision": 0.3234986123515966,
+        "recall": 0.19125586123160976,
+        "map50": 0.13716525111748543,
+        "map50_95": 0.06838695464011774
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.1324230280495622,
+          "recall": 0.34294436906377207,
+          "map50": 0.1392833605031132,
+          "map50_95": 0.046377298980455714
+        },
+        "people": {
+          "precision": 0.3781135511941139,
+          "recall": 0.13482926829268294,
+          "map50": 0.11461462041310316,
+          "map50_95": 0.033674010065047555
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.16372997629498498,
+        "inference": 1.1806755857740254,
+        "loss": 0.00043318246806297033,
+        "postprocess": 2.598589987196215
+      },
+      "onnx_export": {
+        "ok": true
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage3/head_snr_v1_5e/h1_edge27_head_direct_r1/runs/spr-p4p5_direct-r1_standard_attn-none_5e_seed42/weights/best.pt",
+      "delta_best_eval_vs_h0": {
+        "precision": 0.08198088940104697,
+        "recall": -0.0035016358356493305,
+        "map50": -0.005743663020996048,
+        "map50_95": -0.005742121171981654
+      }
+    },
+    "H2": {
+      "id": "H2",
+      "preset": "edge27_head_snr_16_8_4",
+      "description": "level-specific bins P2/P3/P4 = 16/8/4",
+      "status": "complete",
+      "rerun": true,
+      "complexity": {
+        "params": 1731422,
+        "gflops": 9.8719
+      },
+      "epoch5": {
+        "precision": 0.31582,
+        "recall": 0.18659,
+        "map50": 0.12435,
+        "map50_95": 0.0619
+      },
+      "best_eval": {
+        "precision": 0.316109558591072,
+        "recall": 0.1865486558759558,
+        "map50": 0.12476777630330979,
+        "map50_95": 0.06203918544567731
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.13534734347928623,
+          "recall": 0.33288104929895973,
+          "map50": 0.13498509136138886,
+          "map50_95": 0.04714732328900444
+        },
+        "people": {
+          "precision": 0.34998888839870224,
+          "recall": 0.14829268292682926,
+          "map50": 0.11233485223533263,
+          "map50_95": 0.03348579965864322
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.15916067701772904,
+        "inference": 1.5146590420735377,
+        "loss": 0.00044857852050888414,
+        "postprocess": 2.875156720872267
+      },
+      "onnx_export": {
+        "ok": true
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage3/head_snr_v1_5e/h2_edge27_head_snr_16_8_4/runs/spr-p4p5_snr-16-8-4_standard_attn-none_5e_seed42/weights/best.pt",
+      "delta_best_eval_vs_h0": {
+        "precision": 0.07459183564052235,
+        "recall": -0.008208841191303301,
+        "map50": -0.018141137835171683,
+        "map50_95": -0.01208989036642208
+      }
+    },
+    "H3": {
+      "id": "H3",
+      "preset": "edge27_head_hybrid_16_4_1",
+      "description": "aggressive tiny-preserving bins P2/P3/P4 = 16/4/1",
+      "status": "complete",
+      "rerun": true,
+      "complexity": {
+        "params": 1729602,
+        "gflops": 9.8563
+      },
+      "epoch5": {
+        "precision": 0.33798,
+        "recall": 0.19902,
+        "map50": 0.13711,
+        "map50_95": 0.06927
+      },
+      "best_eval": {
+        "precision": 0.33884994458190326,
+        "recall": 0.1991054915295542,
+        "map50": 0.13769270449002544,
+        "map50_95": 0.06948656115504007
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.1384945089764006,
+          "recall": 0.3464495703301673,
+          "map50": 0.13948386167668747,
+          "map50_95": 0.04772149006856248
+        },
+        "people": {
+          "precision": 0.3874606844467766,
+          "recall": 0.1426341463414634,
+          "map50": 0.1239570892104054,
+          "map50_95": 0.036094155777883
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.17183449459599967,
+        "inference": 1.5055530365030911,
+        "loss": 0.0005104325382025355,
+        "postprocess": 3.072134717167899
+      },
+      "onnx_export": {
+        "ok": true
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage3/head_snr_v1_5e/h3_edge27_head_hybrid_16_4_1/runs/spr-p4p5_snr-16-4-1_standard_attn-none_5e_seed42/weights/best.pt",
+      "delta_best_eval_vs_h0": {
+        "precision": 0.09733222163135363,
+        "recall": 0.004347994462295113,
+        "map50": -0.005216209648456038,
+        "map50_95": -0.004642514657059324
+      }
+    }
+  },
+  "ranking_best_eval_map50_95": [
+    "H0",
+    "H3",
+    "H1",
+    "H2"
+  ],
+  "failed_variants": 0,
+  "caution": "deterministic=false and only 5 epochs; use only to shortlist a head for 50e confirmation.",
+  "completed_new_variants": 3
+}

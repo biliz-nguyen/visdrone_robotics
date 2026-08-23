@@ -1,0 +1,9 @@
+branch=research/yoloedge27-head-snr-v1
+head=f1ffca9fb50153373be04c1954c233a0d60c65f5
+screen_root=/home/minh/yoloedge27_experiments/stage3/head_snr_v1_5e
+H0=reuse existing S1 5e; NOT retrained
+new_variants=H1,H2,H3
+epochs_each_new_variant=5
+backbone=S1 SPR P4->P5
+assignment=standard_TAL
+note=local screening only; checkpoints remain runner-local
