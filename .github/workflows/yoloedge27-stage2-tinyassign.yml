@@ -15,6 +15,11 @@ on:
       - tests/test_tiny_assigner.py
   workflow_dispatch:
 
+# Avoid stale queued/rerun jobs executing old commits on the self-hosted runner.
+concurrency:
+  group: yoloedge27-stage2-tinyassign-v1
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -32,8 +37,20 @@ jobs:
       REPORT_DIR: reports/yoloedge27/stage2/tinyassign_v1
 
     steps:
-      - name: Checkout Stage2 research branch
+      - name: Checkout latest Stage2 research branch
         uses: actions/checkout@v4
+        with:
+          ref: research/yoloedge27-tinyassign-v1
+          fetch-depth: 0
+
+      - name: Verify checkout revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "HEAD=$(git rev-parse HEAD)"
+          git log -1 --oneline
+          grep -q "test_full_forward_is_standard_tal_compatible" tests/test_tiny_assigner.py
+          grep -q "min_candidates=6" tests/test_tiny_assigner.py
 
       - name: Pre-flight
         shell: bash
@@ -137,7 +154,6 @@ jobs:
           d = json.loads(p.read_text())
           starved = float(d['tiny']['starved_fraction'])
           focus = float(d['pedestrian_people_tiny']['starved_fraction'])
-          # A 5% threshold is a pre-declared screening gate, not a paper claim.
           should = starved >= 0.05
           print(f'tiny starved fraction: {starved:.4f}')
           print(f'pedestrian+people tiny starved fraction: {focus:.4f}')
@@ -204,12 +220,10 @@ jobs:
           root = Path(os.environ['ROOT'])
           tcr_csv = max(root.glob('runs/*/results.csv'), key=lambda p: p.stat().st_mtime)
           tcr_eval = json.loads((report / 'tcr_5e_eval.json').read_text())
-
           control_csv = Path('reports/yoloedge27/stage1/edge27_spr_v1_50e_results.csv')
 
           def row_for_epoch(path, epoch_number=5):
               rows = list(csv.DictReader(path.open()))
-              # Ultralytics reports epoch values as 1-based integers in this project.
               for row in rows:
                   try:
                       if int(float(row['epoch'])) == epoch_number:
@@ -267,6 +281,7 @@ jobs:
             echo "preset=$PRESET"
             echo "epochs=$EPOCHS"
             echo "should_train=${SHOULD_TRAIN:-unknown}"
+            echo "head=$(git rev-parse HEAD)"
             echo "note=local Stage2 screening; final paper evidence must use locked Kaggle protocol"
           } > "$REPORT_DIR/paths.txt"
 
@@ -275,5 +290,6 @@ jobs:
           git add "$REPORT_DIR"
           if ! git diff --cached --quiet; then
             git commit -m "Record Stage2 tiny assignment screening"
+            git pull --rebase origin research/yoloedge27-tinyassign-v1
             git push origin HEAD:research/yoloedge27-tinyassign-v1
           fi
