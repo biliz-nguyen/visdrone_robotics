@@ -171,10 +171,16 @@ def _validate(cfg: dict[str, Any]) -> None:
                 raise ValueError("QOC is locked to DFL-free reg_max=1")
             lam = float(cfg.get("qoc_lambda", 0.25))
             margin = float(cfg.get("qoc_margin", 0.05))
+            tiny_threshold = float(cfg.get("qoc_tiny_threshold", 16.0))
+            tiny_bonus = float(cfg.get("qoc_tiny_margin_bonus", 0.0))
             if lam < 0:
                 raise ValueError("qoc_lambda must be non-negative")
             if not (0.0 <= margin < 1.0):
                 raise ValueError("qoc_margin must be in [0,1)")
+            if tiny_threshold <= 0:
+                raise ValueError("qoc_tiny_threshold must be positive")
+            if tiny_bonus < 0 or margin + tiny_bonus >= 1.0:
+                raise ValueError("invalid qoc_tiny_margin_bonus")
         elif int(cfg["reg_max"]) != 1:
             raise ValueError("Standard-head variant in the head study is reserved for the DFL-free reg_max=1 control")
     else:
@@ -183,6 +189,10 @@ def _validate(cfg: dict[str, Any]) -> None:
     t = cfg["train"]
     if int(t["batch"]) != int(t["nbs"]):
         print("INFO: batch != nbs. Ultralytics will use gradient accumulation so the nominal batch remains nbs.")
+
+
+def _tag_float(x: float) -> str:
+    return str(float(x)).replace(".", "p")
 
 
 def experiment_tag(cfg: dict[str, Any]) -> str:
@@ -200,9 +210,14 @@ def experiment_tag(cfg: dict[str, Any]) -> str:
             bins = "-".join(str(x) for x in normalize_head_bins(cfg))
             head_tag = f"snr-{bins}"
         elif mode == "quality_overconfidence":
-            lam = str(float(cfg.get("qoc_lambda", 0.25))).replace(".", "p")
-            margin = str(float(cfg.get("qoc_margin", 0.05))).replace(".", "p")
-            head_tag = f"qoc-l{lam}-m{margin}"
+            lam = _tag_float(float(cfg.get("qoc_lambda", 0.25)))
+            margin = _tag_float(float(cfg.get("qoc_margin", 0.05)))
+            tiny_threshold = float(cfg.get("qoc_tiny_threshold", 16.0))
+            tiny_bonus = float(cfg.get("qoc_tiny_margin_bonus", 0.0))
+            if tiny_bonus > 0:
+                head_tag = f"qoc2-l{lam}-m{margin}-t{_tag_float(tiny_threshold)}-b{_tag_float(tiny_bonus)}"
+            else:
+                head_tag = f"qoc-l{lam}-m{margin}"
         else:
             head_tag = "direct-r1"
         return (
