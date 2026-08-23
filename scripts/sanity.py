@@ -25,7 +25,7 @@ def main():
     import torch
     import ultralytics
     from ultralytics import YOLO
-    from ultralytics.utils.loss import BboxLoss
+    from ultralytics.utils.loss import BboxLoss, v8DetectionLoss
 
     print("=" * 90)
     print("SANITY CHECK")
@@ -88,6 +88,12 @@ def main():
     assert cfg["attention"] == "none"
     assert cfg.get("pretrained", False) is False
 
+    criterion = v8DetectionLoss(model.model)
+    assigner_name = criterion.assigner.__class__.__name__
+    assert assigner_name == "TaskAlignedAssigner", (
+        f"Placement study must use unmodified standard TAL, got {assigner_name}"
+    )
+
     params = sum(p.numel() for p in model.model.parameters())
     model.model.eval()
 
@@ -127,6 +133,7 @@ def main():
     print("Experiment:", cfg["experiment_tag"])
     print("SPR placements:", placements)
     print("Stage modules:", stage_modules)
+    print("Assigner:", assigner_name)
     print("REAL reg_max:", detect.reg_max)
     print("REAL Detect.no:", detect.no)
     print("Strides:", strides)
@@ -139,7 +146,7 @@ def main():
     print("Pretrained: False")
     print("=" * 90)
 
-    del model
+    del criterion, model
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
