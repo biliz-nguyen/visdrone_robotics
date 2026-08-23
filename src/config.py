@@ -26,7 +26,7 @@ CLASS_NAMES = [
 
 SPR_PLACEMENT_ORDER = ("p2_p3", "p3_p4", "p4_p5")
 SPR_PLACEMENT_SET = set(SPR_PLACEMENT_ORDER)
-HEAD_MODES = {"standard", "stride_reg"}
+HEAD_MODES = {"standard", "stride_reg", "paired_boundary"}
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -172,6 +172,12 @@ def _validate(cfg: dict[str, Any]) -> None:
                 raise ValueError("head_reg_bins values must be one of 1,2,4,8,16")
             if bins != sorted(bins, reverse=True):
                 raise ValueError("head_reg_bins must be non-increasing from P2 to P4")
+        elif head_mode == "paired_boundary":
+            if int(cfg["reg_max"]) != 1:
+                raise ValueError("paired_boundary head is DFL-free and requires reg_max=1")
+            ratio = float(cfg.get("paired_ratio_limit", 0.99))
+            if not (0.0 < ratio < 1.0):
+                raise ValueError("paired_ratio_limit must be in (0,1)")
         elif int(cfg["reg_max"]) != 1:
             raise ValueError("Standard-head variant in the head study is reserved for the DFL-free reg_max=1 control")
     else:
@@ -198,6 +204,9 @@ def experiment_tag(cfg: dict[str, Any]) -> str:
         if cfg.get("head_mode") == "stride_reg":
             bins = "-".join(str(x) for x in normalize_head_bins(cfg))
             head_tag = f"snr-{bins}"
+        elif cfg.get("head_mode") == "paired_boundary":
+            ratio = str(float(cfg.get("paired_ratio_limit", 0.99))).replace(".", "p")
+            head_tag = f"pbr-r{ratio}"
         else:
             head_tag = "direct-r1"
         return (
