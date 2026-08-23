@@ -56,6 +56,15 @@ def main():
         bins = normalize_head_bins(cfg)
         assert list(detect.reg_bins) == bins
         assert [m[-1].out_channels for m in detect.cv2] == [4 * x for x in bins]
+    elif head_mode == "detail_corrected":
+        assert detect.__class__.__name__ == "DetailCorrectedDetect"
+        assert int(detect.reg_max) == 1
+        assert int(detect.no) == int(detect.nc + 4)
+        assert abs(float(detect.max_correction_cell) - float(cfg["detail_max_correction_cell"])) < 1e-9
+        assert detect.detail_proj.out_channels == 4
+        assert torch.count_nonzero(detect.detail_proj.weight).item() == 0
+        assert torch.count_nonzero(detect.detail_proj.bias).item() == 0
+        bins = [1, 1, 1]
     else:
         bins = [int(detect.reg_max)] * len(strides)
         assert detect.__class__.__name__ == "Detect"
@@ -74,6 +83,8 @@ def main():
     if head_mode == "stride_reg":
         assert criterion.__class__.__name__ == "StrideRegDetectionLoss"
         assert list(criterion.reg_bins) == bins
+    else:
+        assert criterion.__class__.__name__ == "v8DetectionLoss"
 
     params = sum(p.numel() for p in model.model.parameters())
     model.model.eval()
@@ -106,7 +117,10 @@ def main():
     print("Head:", detect.__class__.__name__)
     print("Head mode:", head_mode)
     print("Regression bins P2/P3/P4:", bins)
+    if head_mode == "detail_corrected":
+        print("P2 max correction (feature cells):", detect.max_correction_cell)
     print("Assigner:", assigner_name)
+    print("Criterion:", criterion.__class__.__name__)
     print("Strides:", strides)
     print("SPRDown count:", len(sprdowns))
     print("Attention:", cfg["attention"])
