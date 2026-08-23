@@ -1,0 +1,7 @@
+branch=research/yoloedge27-tinyquality-v1
+preset=edge27_spr_taq_v1
+epochs=5
+root=/home/minh/yoloedge27_experiments/stage2/edge27_spr_taq_v1_5e
+best_pt=/home/minh/yoloedge27_experiments/stage2/edge27_spr_taq_v1_5e/runs/sprdown_reg16_standard_taq_attn-none_5e_seed42/weights/best.pt
+results_csv=/home/minh/yoloedge27_experiments/stage2/edge27_spr_taq_v1_5e/runs/sprdown_reg16_standard_taq_attn-none_5e_seed42/results.csv
+note=local 5e screening only; no 50e run is authorized by this workflow

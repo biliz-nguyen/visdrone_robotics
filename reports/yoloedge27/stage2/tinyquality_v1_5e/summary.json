@@ -1,0 +1,252 @@
+{
+  "purpose": "TAQ v1 5e local mechanism screening; not paper evidence.",
+  "model": "SPR-Down v1 + Tiny-Adaptive Quality Alignment",
+  "change_only": "standard TAL candidate region retained; IoU exponent beta is smoothly reduced only for GT min-side <16px",
+  "control_epoch5": {
+    "precision": 0.24424,
+    "recall": 0.17968,
+    "map50": 0.13161,
+    "map50_95": 0.0684
+  },
+  "tcr_epoch5": {
+    "precision": 0.33061,
+    "recall": 0.20162,
+    "map50": 0.14113,
+    "map50_95": 0.07292
+  },
+  "taq_epoch5": {
+    "precision": 0.33133,
+    "recall": 0.20343,
+    "map50": 0.14484,
+    "map50_95": 0.07465
+  },
+  "delta_taq_vs_control": {
+    "precision": 0.08709,
+    "recall": 0.023749999999999993,
+    "map50": 0.013229999999999992,
+    "map50_95": 0.006249999999999992
+  },
+  "delta_taq_vs_tcr": {
+    "precision": 0.0007199999999999984,
+    "recall": 0.001810000000000006,
+    "map50": 0.003709999999999991,
+    "map50_95": 0.0017299999999999954
+  },
+  "taq_best_5e_eval": {
+    "weights": "/home/minh/yoloedge27_experiments/stage2/edge27_spr_taq_v1_5e/runs/sprdown_reg16_standard_taq_attn-none_5e_seed42/weights/best.pt",
+    "preset": "edge27_spr_taq_v1",
+    "experiment_tag": "sprdown_reg16_standard_taq_attn-none_5e_seed42",
+    "aggregate": {
+      "precision": 0.3329541298227779,
+      "recall": 0.20383165353757476,
+      "map50": 0.14529840796484358,
+      "map50_95": 0.07493406747362463
+    },
+    "per_class": {
+      "awning-tricycle": {
+        "precision": 0.19180931160994646,
+        "recall": 0.007518796992481203,
+        "map50": 0.013523284174566491,
+        "map50_95": 0.008632630799096227
+      },
+      "bicycle": {
+        "precision": 1.0,
+        "recall": 0.0,
+        "map50": 0.0031307076389130613,
+        "map50_95": 0.0010530550206410442
+      },
+      "bus": {
+        "precision": 0.3527104234132305,
+        "recall": 0.17131474103585656,
+        "map50": 0.14513215943804395,
+        "map50_95": 0.09117786001354436
+      },
+      "car": {
+        "precision": 0.34418912372709853,
+        "recall": 0.7173634812286689,
+        "map50": 0.602056209321987,
+        "map50_95": 0.3634903324363944
+      },
+      "motor": {
+        "precision": 0.30576989851977526,
+        "recall": 0.2447810069586574,
+        "map50": 0.16616926010197564,
+        "map50_95": 0.05453898161096381
+      },
+      "pedestrian": {
+        "precision": 0.1483986080679939,
+        "recall": 0.37336047037539577,
+        "map50": 0.15258954747598974,
+        "map50_95": 0.05345473663565218
+      },
+      "people": {
+        "precision": 0.40696645199606785,
+        "recall": 0.1344390243902439,
+        "map50": 0.12885905405037928,
+        "map50_95": 0.03860903203629253
+      },
+      "tricycle": {
+        "precision": 0.21938690817854095,
+        "recall": 0.07559808612440191,
+        "map50": 0.05660537598585577,
+        "map50_95": 0.026316168047985096
+      },
+      "truck": {
+        "precision": 0.17604888903740257,
+        "recall": 0.10533333333333333,
+        "map50": 0.05685863274953905,
+        "map50_95": 0.03194067556228468
+      },
+      "van": {
+        "precision": 0.1842616836777231,
+        "recall": 0.20860759493670886,
+        "map50": 0.12805984871118595,
+        "map50_95": 0.08012720257339191
+      }
+    },
+    "focus": {
+      "pedestrian": {
+        "precision": 0.1483986080679939,
+        "recall": 0.37336047037539577,
+        "map50": 0.15258954747598974,
+        "map50_95": 0.05345473663565218
+      },
+      "people": {
+        "precision": 0.40696645199606785,
+        "recall": 0.1344390243902439,
+        "map50": 0.12885905405037928,
+        "map50_95": 0.03860903203629253
+      }
+    },
+    "speed_ms": {
+      "preprocess": 0.150152739067785,
+      "inference": 1.565031085750105,
+      "loss": 0.0005013248184270966,
+      "postprocess": 3.0516934653249765
+    }
+  },
+  "train_beta_diagnostic": {
+    "split": "train",
+    "imgsz": 640,
+    "base_beta": 6.0,
+    "beta_floor": 4.0,
+    "tiny_min_side_px": 16.0,
+    "schedule": "beta_floor + (base_beta-beta_floor)*clamp(min_side/tiny_min_side,0,1)",
+    "objects": 343202,
+    "affected_objects": 266021,
+    "affected_fraction": 0.775114946882594,
+    "beta_all": {
+      "count": 343202,
+      "mean": 5.1694932932735265,
+      "median": 5.0833336,
+      "p10": 4.4,
+      "p25": 4.628571389714286,
+      "p75": 5.8799998,
+      "p90": 6.0,
+      "min": 4.041753483089771,
+      "max": 6.0
+    },
+    "beta_affected": {
+      "count": 266021,
+      "mean": 4.928537360727391,
+      "median": 4.857143199999999,
+      "p10": 4.3529408,
+      "p25": 4.542797530688936,
+      "p75": 5.2571432,
+      "p90": 5.6399998,
+      "min": 4.041753483089771,
+      "max": 5.9999998354285715
+    },
+    "pedestrian_people": {
+      "objects": 106395,
+      "affected_objects": 101165,
+      "affected_fraction": 0.9508435546783214,
+      "beta_all": {
+        "count": 106395,
+        "mean": 4.806078013823379,
+        "median": 4.6857144,
+        "p10": 4.2916664,
+        "p25": 4.44,
+        "p75": 5.0588232,
+        "p90": 5.5600000000000005,
+        "min": 4.041753483089771,
+        "max": 6.0
+      },
+      "beta_affected": {
+        "count": 101165,
+        "mean": 4.744354967436746,
+        "median": 4.6470592,
+        "p10": 4.2857144,
+        "p25": 4.4166664,
+        "p75": 4.9714288,
+        "p90": 5.36,
+        "min": 4.041753483089771,
+        "max": 5.9999998354285715
+      }
+    },
+    "interpretation": "TAQ keeps the standard TAL candidate region and changes only the localization exponent for GTs below the tiny threshold; non-tiny GTs remain beta=6 exactly."
+  },
+  "val_beta_diagnostic": {
+    "split": "val",
+    "imgsz": 640,
+    "base_beta": 6.0,
+    "beta_floor": 4.0,
+    "tiny_min_side_px": 16.0,
+    "schedule": "beta_floor + (base_beta-beta_floor)*clamp(min_side/tiny_min_side,0,1)",
+    "objects": 38759,
+    "affected_objects": 30934,
+    "affected_fraction": 0.7981114063830336,
+    "beta_all": {
+      "count": 38759,
+      "mean": 5.171488061046467,
+      "median": 5.0833336,
+      "p10": 4.4166664,
+      "p25": 4.6470592,
+      "p75": 5.76470605,
+      "p90": 6.0,
+      "min": 4.1176471,
+      "max": 6.0
+    },
+    "beta_affected": {
+      "count": 30934,
+      "mean": 4.961909412235728,
+      "median": 4.8823528,
+      "p10": 4.4117648,
+      "p25": 4.5833336,
+      "p75": 5.2941176500000005,
+      "p90": 5.6470592,
+      "min": 4.1176471,
+      "max": 5.9999998
+    },
+    "pedestrian_people": {
+      "objects": 13969,
+      "affected_objects": 13429,
+      "affected_fraction": 0.9613429737275395,
+      "beta_all": {
+        "count": 13969,
+        "mean": 4.826128301721669,
+        "median": 4.7058824,
+        "p10": 4.3529408,
+        "p25": 4.470588,
+        "p75": 5.0588232,
+        "p90": 5.52941185,
+        "min": 4.1176472,
+        "max": 6.0
+      },
+      "beta_affected": {
+        "count": 13429,
+        "mean": 4.77892518033733,
+        "median": 4.7058824,
+        "p10": 4.3529408,
+        "p25": 4.470588,
+        "p75": 5.0,
+        "p90": 5.352940800000001,
+        "min": 4.1176472,
+        "max": 5.9999998
+      }
+    },
+    "interpretation": "TAQ keeps the standard TAL candidate region and changes only the localization exponent for GTs below the tiny threshold; non-tiny GTs remain beta=6 exactly."
+  },
+  "decision_rule": "Only consider a 50e TAQ run if 5e is trainable and does not show a clear accuracy collapse versus standard TAL.",
+  "caution": "deterministic=false; early-epoch differences are screening signals only."
+}
