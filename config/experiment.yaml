@@ -1,10 +1,10 @@
 # ============================================================
-# YOLOEdge27 — Q1 RESEARCH TRACK / STAGE 1
-# Goal: isolate SPR-Down against a clean YOLO-derived baseline.
+# YOLOEdge27 — Q1 RESEARCH TRACK / STAGE 2
+# Goal: test tiny-aware assignment on top of validated SPR-Down v1.
 # Legacy AConv / NWD / attention components are intentionally NOT used.
 # ============================================================
 
-preset: "edge27_spr_v1"
+preset: "edge27_spr_tcr_v1"
 
 ultralytics_tag: "v8.4.56"
 
@@ -14,16 +14,25 @@ presets:
     reg_max: 16
     loss_mode: "standard"
     attention: "none"
+    assigner_mode: "standard"
 
   edge27_spr_v1:
     backbone_down: "sprdown"
     reg_max: 16
     loss_mode: "standard"
     attention: "none"
+    assigner_mode: "standard"
+
+  edge27_spr_tcr_v1:
+    backbone_down: "sprdown"
+    reg_max: 16
+    loss_mode: "standard"
+    attention: "none"
+    assigner_mode: "tiny_recovery"
 
 # -------------------------
-# Stage-1 fair train protocol
-# Kaggle-oriented: same optimization settings for baseline and SPR-Down.
+# Stage-2 fair train protocol
+# Same optimizer/augmentation as Stage 1. Only assignment changes.
 # -------------------------
 train:
   imgsz: 640
@@ -46,7 +55,6 @@ train:
   save_period: 10
   max_det: 500
 
-  # Fair augmentation protocol
   hsv_h: 0.015
   hsv_s: 0.5
   hsv_v: 0.3
@@ -68,18 +76,26 @@ train:
   dfl: 1.5
 
 # -------------------------
+# Tiny-aware assignment prototype
+# Thresholds are defined in the current 640-pixel training canvas.
+# -------------------------
+tiny_assigner:
+  tiny_min_side: 16.0
+  min_candidates: 4
+
+# -------------------------
 # Reproducibility
 # -------------------------
 seed: 42
 pretrained: false
 
-# Retained only for shared config schema; NOT active in Stage 1.
+# Retained only for shared config schema; NOT active in Stage 2.
 nwd:
   c: 12.8
   ciou_weight: 0.75
   nwd_weight: 0.25
 
-# Retained only for shared builder schema; attention is disabled in Stage 1.
+# Retained only for shared builder schema; attention is disabled in Stage 2.
 attention_cfg:
   position: "P2_AFTER_C3K2"
   eca_kernel: 3
