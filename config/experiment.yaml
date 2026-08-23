@@ -4,7 +4,7 @@
 # Legacy AConv / NWD / attention components are intentionally NOT used.
 # ============================================================
 
-preset: "edge27_spr_v1"
+preset: "edge27_spr_v2"
 
 ultralytics_tag: "v8.4.56"
 
@@ -17,6 +17,12 @@ presets:
 
   edge27_spr_v1:
     backbone_down: "sprdown"
+    reg_max: 16
+    loss_mode: "standard"
+    attention: "none"
+
+  edge27_spr_v2:
+    backbone_down: "sprdown_v2"
     reg_max: 16
     loss_mode: "standard"
     attention: "none"
@@ -46,7 +52,6 @@ train:
   save_period: 10
   max_det: 500
 
-  # Fair augmentation protocol
   hsv_h: 0.015
   hsv_s: 0.5
   hsv_v: 0.3
@@ -67,19 +72,14 @@ train:
   cls: 0.5
   dfl: 1.5
 
-# -------------------------
-# Reproducibility
-# -------------------------
 seed: 42
 pretrained: false
 
-# Retained only for shared config schema; NOT active in Stage 1.
 nwd:
   c: 12.8
   ciou_weight: 0.75
   nwd_weight: 0.25
 
-# Retained only for shared builder schema; attention is disabled in Stage 1.
 attention_cfg:
   position: "P2_AFTER_C3K2"
   eca_kernel: 3
@@ -87,9 +87,6 @@ attention_cfg:
   ca_min_channels: 8
   rlca_alpha_init: 0.10
 
-# -------------------------
-# Export defaults
-# -------------------------
 export:
   imgsz: 640
   batch: 1
