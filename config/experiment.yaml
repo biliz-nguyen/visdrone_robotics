@@ -1,10 +1,10 @@
 # ============================================================
-# YOLOEdge27 — Q1 RESEARCH TRACK / STAGE 2
-# Goal: test tiny-aware assignment on top of validated SPR-Down v1.
-# Legacy AConv / NWD / attention components are intentionally NOT used.
+# YOLOEdge27 — Q1 RESEARCH TRACK / STAGE 2 REDESIGN
+# Goal: test tiny-adaptive TAL quality alignment on top of SPR-Down v1.
+# Legacy AConv / NWD / attention and TCR recovery are intentionally NOT active.
 # ============================================================
 
-preset: "edge27_spr_tcr_v1"
+preset: "edge27_spr_taq_v1"
 
 ultralytics_tag: "v8.4.56"
 
@@ -30,14 +30,21 @@ presets:
     attention: "none"
     assigner_mode: "tiny_recovery"
 
+  edge27_spr_taq_v1:
+    backbone_down: "sprdown"
+    reg_max: 16
+    loss_mode: "standard"
+    attention: "none"
+    assigner_mode: "tiny_quality"
+
 # -------------------------
-# Stage-2 fair train protocol
-# Same optimizer/augmentation as Stage 1. Only assignment changes.
+# Fair train protocol
+# Same optimizer/augmentation as Stage 1. Only assignment ranking changes.
 # -------------------------
 train:
   imgsz: 640
   epochs: 50
-  batch: 16
+  batch: 8
   nbs: 16
   workers: 4
 
@@ -75,13 +82,21 @@ train:
   cls: 0.5
   dfl: 1.5
 
-# -------------------------
-# Tiny-aware assignment prototype
-# Thresholds are defined in the current 640-pixel training canvas.
-# -------------------------
+# Historical TCR config retained only so old preset remains reproducible.
 tiny_assigner:
   tiny_min_side: 16.0
   min_candidates: 4
+
+# -------------------------
+# Tiny-Adaptive Quality Alignment (TAQ) v1
+# Standard TAL uses beta=6.0 for every GT.
+# For min-side s <= 16px:
+#   beta_eff = beta_floor + (6-beta_floor) * clamp(s/16, 0, 1)
+# Non-tiny GTs therefore remain exactly beta=6.
+# -------------------------
+tiny_quality_assigner:
+  tiny_min_side: 16.0
+  beta_floor: 4.0
 
 # -------------------------
 # Reproducibility
