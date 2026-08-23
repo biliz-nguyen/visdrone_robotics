@@ -1,0 +1,61 @@
+{
+  "device": "cpu",
+  "device_name": "CPU (4 torch threads)",
+  "torch": "2.5.1+cu124",
+  "imgsz": 640,
+  "warmup": 10,
+  "iters": 30,
+  "repeats": 5,
+  "results": {
+    "baseline_conv": {
+      "median_ms": 39.94048743333334,
+      "mean_ms": 40.096282026666664,
+      "min_ms": 38.327979,
+      "max_ms": 42.87324616666667,
+      "samples_ms": [
+        39.2184536,
+        42.87324616666667,
+        38.327979,
+        39.94048743333334,
+        40.12124393333333
+      ],
+      "params": 1996350,
+      "model_yaml": "/home/minh/yoloedge27_experiments/stage1/edge27_spr_v2_5e/generated/model_fullbench_baseline_conv.yaml"
+    },
+    "spr_v1": {
+      "median_ms": 35.703790166666664,
+      "mean_ms": 36.623012626666664,
+      "min_ms": 34.0779219,
+      "max_ms": 40.8612651,
+      "samples_ms": [
+        40.8612651,
+        36.817206766666665,
+        35.703790166666664,
+        34.0779219,
+        35.654879199999996
+      ],
+      "params": 1736638,
+      "model_yaml": "/home/minh/yoloedge27_experiments/stage1/edge27_spr_v2_5e/generated/model_fullbench_spr_v1.yaml"
+    },
+    "spr_v2": {
+      "median_ms": 40.961410066666666,
+      "mean_ms": 40.91823826666667,
+      "min_ms": 40.4658646,
+      "max_ms": 41.57824803333333,
+      "samples_ms": [
+        40.9860617,
+        40.599606933333334,
+        40.4658646,
+        40.961410066666666,
+        41.57824803333333
+      ],
+      "params": 1736126,
+      "model_yaml": "/home/minh/yoloedge27_experiments/stage1/edge27_spr_v2_5e/generated/model_fullbench_spr_v2.yaml"
+    }
+  },
+  "ratios": {
+    "v1_over_baseline": 0.8939247480707802,
+    "v2_over_baseline": 1.0255610959940686,
+    "v2_over_v1": 1.1472566322919004
+  }
+}

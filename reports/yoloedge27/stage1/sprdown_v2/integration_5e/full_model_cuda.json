@@ -1,0 +1,61 @@
+{
+  "device": "cuda",
+  "device_name": "NVIDIA GeForce RTX 4060 Ti",
+  "torch": "2.5.1+cu124",
+  "imgsz": 640,
+  "warmup": 20,
+  "iters": 100,
+  "repeats": 5,
+  "results": {
+    "baseline_conv": {
+      "median_ms": 2.6746026611328126,
+      "mean_ms": 2.701941650390625,
+      "min_ms": 2.6558770751953125,
+      "max_ms": 2.8182916259765625,
+      "samples_ms": [
+        2.700369873046875,
+        2.6746026611328126,
+        2.6558770751953125,
+        2.8182916259765625,
+        2.6605670166015627
+      ],
+      "params": 1996350,
+      "model_yaml": "/home/minh/yoloedge27_experiments/stage1/edge27_spr_v2_5e/generated/model_fullbench_baseline_conv.yaml"
+    },
+    "spr_v1": {
+      "median_ms": 2.78513671875,
+      "mean_ms": 2.8124789428710937,
+      "min_ms": 2.7662335205078126,
+      "max_ms": 2.940013732910156,
+      "samples_ms": [
+        2.804029541015625,
+        2.78513671875,
+        2.766981201171875,
+        2.7662335205078126,
+        2.940013732910156
+      ],
+      "params": 1736638,
+      "model_yaml": "/home/minh/yoloedge27_experiments/stage1/edge27_spr_v2_5e/generated/model_fullbench_spr_v1.yaml"
+    },
+    "spr_v2": {
+      "median_ms": 2.74872314453125,
+      "mean_ms": 2.7680262451171878,
+      "min_ms": 2.718965759277344,
+      "max_ms": 2.865722351074219,
+      "samples_ms": [
+        2.718965759277344,
+        2.730666198730469,
+        2.776053771972656,
+        2.865722351074219,
+        2.74872314453125
+      ],
+      "params": 1736126,
+      "model_yaml": "/home/minh/yoloedge27_experiments/stage1/edge27_spr_v2_5e/generated/model_fullbench_spr_v2.yaml"
+    }
+  },
+  "ratios": {
+    "v1_over_baseline": 1.0413272817018626,
+    "v2_over_baseline": 1.0277127083119868,
+    "v2_over_v1": 0.9869257498299427
+  }
+}
