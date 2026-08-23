@@ -26,7 +26,7 @@ CLASS_NAMES = [
 
 SPR_PLACEMENT_ORDER = ("p2_p3", "p3_p4", "p4_p5")
 SPR_PLACEMENT_SET = set(SPR_PLACEMENT_ORDER)
-HEAD_MODES = {"standard", "stride_reg"}
+HEAD_MODES = {"standard", "stride_reg", "detail_corrected"}
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -91,6 +91,7 @@ def load_config(
     resolved["spr_placements"] = normalize_spr_placements(resolved)
     resolved["head_mode"] = resolved.get("head_mode", "standard")
     resolved["head_reg_bins"] = normalize_head_bins(resolved)
+    resolved["detail_max_correction_cell"] = float(resolved.get("detail_max_correction_cell", 0.5))
     resolved["study"] = resolved.get("study", "placement")
 
     resolved["dataset_root"] = str(Path(local["dataset_root"]).expanduser().resolve())
@@ -98,15 +99,9 @@ def load_config(
     resolved["train_images"] = local.get("train_images", "VisDrone2019-DET-train/images")
     resolved["val_images"] = local.get("val_images", "VisDrone2019-DET-val/images")
     resolved["test_images"] = local.get("test_images", "VisDrone2019-DET-test-dev/images")
-    resolved["train_annotations"] = local.get(
-        "train_annotations", "VisDrone2019-DET-train/annotations"
-    )
-    resolved["val_annotations"] = local.get(
-        "val_annotations", "VisDrone2019-DET-val/annotations"
-    )
-    resolved["test_annotations"] = local.get(
-        "test_annotations", "VisDrone2019-DET-test-dev/annotations"
-    )
+    resolved["train_annotations"] = local.get("train_annotations", "VisDrone2019-DET-train/annotations")
+    resolved["val_annotations"] = local.get("val_annotations", "VisDrone2019-DET-val/annotations")
+    resolved["test_annotations"] = local.get("test_annotations", "VisDrone2019-DET-test-dev/annotations")
     resolved["test_image"] = local.get("test_image", "")
 
     resolved["project_root"] = str(ROOT)
@@ -172,6 +167,12 @@ def _validate(cfg: dict[str, Any]) -> None:
                 raise ValueError("head_reg_bins values must be one of 1,2,4,8,16")
             if bins != sorted(bins, reverse=True):
                 raise ValueError("head_reg_bins must be non-increasing from P2 to P4")
+        elif head_mode == "detail_corrected":
+            if int(cfg["reg_max"]) != 1:
+                raise ValueError("detail_corrected head is intentionally DFL-free and requires reg_max=1")
+            offset = float(cfg.get("detail_max_correction_cell", 0.5))
+            if not (0.0 < offset <= 1.0):
+                raise ValueError("detail_max_correction_cell must be in (0, 1]")
         elif int(cfg["reg_max"]) != 1:
             raise ValueError("Standard-head variant in the head study is reserved for the DFL-free reg_max=1 control")
     else:
@@ -179,10 +180,7 @@ def _validate(cfg: dict[str, Any]) -> None:
 
     t = cfg["train"]
     if int(t["batch"]) != int(t["nbs"]):
-        print(
-            "INFO: batch != nbs. Ultralytics will use gradient accumulation "
-            "so the nominal batch remains nbs."
-        )
+        print("INFO: batch != nbs. Ultralytics will use gradient accumulation so the nominal batch remains nbs.")
 
 
 def experiment_tag(cfg: dict[str, Any]) -> str:
@@ -198,6 +196,9 @@ def experiment_tag(cfg: dict[str, Any]) -> str:
         if cfg.get("head_mode") == "stride_reg":
             bins = "-".join(str(x) for x in normalize_head_bins(cfg))
             head_tag = f"snr-{bins}"
+        elif cfg.get("head_mode") == "detail_corrected":
+            offset = str(float(cfg.get("detail_max_correction_cell", 0.5))).replace(".", "p")
+            head_tag = f"dcr-p2-o{offset}"
         else:
             head_tag = "direct-r1"
         return (
