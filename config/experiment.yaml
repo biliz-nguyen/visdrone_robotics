@@ -1,10 +1,10 @@
 # ============================================================
 # YOLOEdge27 — Q1 RESEARCH TRACK / HEAD QUALITY STUDY
 # Confirmed backbone: one SPR-Down at P4->P5 (S1).
-# Existing S1/H1 controls are reused; they are NOT retrained here.
+# Existing S1/H1/Q1 controls are reused; they are NOT retrained here.
 # ============================================================
 
-preset: "edge27_head_qoc_v1"
+preset: "edge27_head_qoc_v2"
 
 ultralytics_tag: "v8.4.56"
 
@@ -111,10 +111,7 @@ presets:
     head_mode: "stride_reg"
     head_reg_bins: [16, 4, 1]
 
-  # Q1: Quality Overconfidence Constraint.
-  # Inference is identical to H1. During training only, positives whose class
-  # confidence exceeds detached localization IoU + margin receive an extra
-  # one-sided calibration penalty. Standard TAL/BCE/CIoU/direct-reg stay intact.
+  # Q1: fixed-margin QOC control from the previous screen.
   edge27_head_qoc_v1:
     study: "head"
     backbone_down: "sprdown"
@@ -125,6 +122,24 @@ presets:
     head_mode: "quality_overconfidence"
     qoc_lambda: 0.25
     qoc_margin: 0.05
+    qoc_tiny_threshold: 16.0
+    qoc_tiny_margin_bonus: 0.0
+
+  # Q2: tiny-aware QOC. Normal objects (min-side >=16 px) are exactly Q1.
+  # For smaller assigned GT boxes, margin increases continuously up to +0.10,
+  # reducing false overconfidence suppression caused by tiny-box IoU sensitivity.
+  edge27_head_qoc_v2:
+    study: "head"
+    backbone_down: "sprdown"
+    spr_placements: ["p4_p5"]
+    reg_max: 1
+    loss_mode: "standard"
+    attention: "none"
+    head_mode: "quality_overconfidence"
+    qoc_lambda: 0.25
+    qoc_margin: 0.05
+    qoc_tiny_threshold: 16.0
+    qoc_tiny_margin_bonus: 0.10
 
 train:
   imgsz: 640
