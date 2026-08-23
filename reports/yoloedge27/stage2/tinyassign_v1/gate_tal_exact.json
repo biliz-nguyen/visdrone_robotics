@@ -1,0 +1,8 @@
+{
+  "threshold": 0.05,
+  "diagnostic": "Ultralytics v8.4.56 TAL-exact candidate region",
+  "tiny_starved_fraction": 0.18844265268495908,
+  "pedestrian_people_tiny_starved_fraction": 0.22056796250344637,
+  "gate": "PASS_RUN_5E",
+  "note": "Post-hoc mechanism check only; no retraining performed."
+}

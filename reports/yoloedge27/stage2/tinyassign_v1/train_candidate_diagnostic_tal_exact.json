@@ -1,0 +1,65 @@
+{
+  "split": "train",
+  "diagnostic": "ultralytics_v8.4.56_TAL_exact_candidate_region",
+  "imgsz": 640,
+  "strides": [
+    4,
+    8,
+    16
+  ],
+  "smallest_stride": 4,
+  "stride_val": 8,
+  "tiny_min_side_px": 16.0,
+  "min_candidates": 4,
+  "objects": 343202,
+  "objects_with_builtin_tiny_expansion": 54010,
+  "all_candidate_counts": {
+    "count": 343202,
+    "mean": 34.90691487811843,
+    "median": 10.0,
+    "p10": 3.0,
+    "p25": 5.0,
+    "p75": 29.0,
+    "p90": 80.0,
+    "min": 0.0,
+    "max": 5700.0
+  },
+  "tiny": {
+    "objects": 267397,
+    "fraction_of_all": 0.779124247527695,
+    "starved_lt_min_candidates": 50389,
+    "starved_fraction": 0.18844265268495908,
+    "zero_candidate": 80,
+    "zero_fraction": 0.000299180619079496,
+    "candidate_counts": {
+      "count": 267397,
+      "mean": 10.398168266659686,
+      "median": 7.0,
+      "p10": 3.0,
+      "p25": 4.0,
+      "p75": 14.0,
+      "p90": 23.0,
+      "min": 0.0,
+      "max": 158.0
+    }
+  },
+  "pedestrian_people_tiny": {
+    "objects": 101556,
+    "starved_lt_min_candidates": 22400,
+    "starved_fraction": 0.22056796250344637,
+    "zero_candidate": 49,
+    "zero_fraction": 0.00048249241797628894,
+    "candidate_counts": {
+      "count": 101556,
+      "mean": 8.16619402103273,
+      "median": 5.0,
+      "p10": 3.0,
+      "p25": 4.0,
+      "p75": 10.0,
+      "p90": 18.0,
+      "min": 0.0,
+      "max": 78.0
+    }
+  },
+  "interpretation": "Counts reproduce Ultralytics v8.4.56 built-in tiny-GT expansion before measuring whether TCR would add candidates."
+}
