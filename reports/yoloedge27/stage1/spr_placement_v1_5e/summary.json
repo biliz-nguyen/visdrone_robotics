@@ -1,0 +1,518 @@
+{
+  "purpose": "Exhaustive local 5e SPR-Down backbone placement screening; not final paper evidence.",
+  "protocol": {
+    "epochs": 5,
+    "batch": 8,
+    "nbs": 16,
+    "workers": 4,
+    "imgsz": 640,
+    "optimizer": "AdamW",
+    "lr0": 0.0015,
+    "lrf": 0.05,
+    "weight_decay": 0.05,
+    "seed": 42,
+    "pretrained": false,
+    "assigner": "standard TAL",
+    "loss": "standard",
+    "reg_max": 16,
+    "attention": "none"
+  },
+  "placement_space": {
+    "p2_p3": "backbone layer 3, P2->P3",
+    "p3_p4": "backbone layer 5, P3->P4",
+    "p4_p5": "backbone layer 7, P4->P5",
+    "coverage": "all 2^3 Conv/SPR combinations"
+  },
+  "variants": {
+    "B0": {
+      "id": "B0",
+      "preset": "edge27_place_b0",
+      "spr_placements": [],
+      "status": "complete",
+      "complexity": {
+        "params": 1996350,
+        "gflops": 10.1206
+      },
+      "epoch5": {
+        "precision": 0.22736,
+        "recall": 0.20232,
+        "map50": 0.14088,
+        "map50_95": 0.07206
+      },
+      "best_eval": {
+        "precision": 0.22871515880173746,
+        "recall": 0.20236723366653125,
+        "map50": 0.14119686662729505,
+        "map50_95": 0.07229815444918343
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.13386847914845718,
+          "recall": 0.3585481682496608,
+          "map50": 0.15006934599776428,
+          "map50_95": 0.052846483397449476
+        },
+        "people": {
+          "precision": 0.36820999274954697,
+          "recall": 0.13775609756097562,
+          "map50": 0.11595063012956572,
+          "map50_95": 0.03266941869113967
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.16072631388606104,
+        "inference": 1.5531150930542854,
+        "loss": 0.0004506022258840984,
+        "postprocess": 2.1859206989090265
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/b0_edge27_place_b0/runs/conv_reg16_standard_attn-none_5e_seed42/weights/best.pt",
+      "local_results_csv": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/b0_edge27_place_b0/runs/conv_reg16_standard_attn-none_5e_seed42/results.csv",
+      "delta_best_eval_vs_b0": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "map50": 0.0,
+        "map50_95": 0.0
+      },
+      "delta_epoch5_vs_b0": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "map50": 0.0,
+        "map50_95": 0.0
+      }
+    },
+    "S1": {
+      "id": "S1",
+      "preset": "edge27_spr_p4p5",
+      "spr_placements": [
+        "p4_p5"
+      ],
+      "status": "complete",
+      "complexity": {
+        "params": 1736638,
+        "gflops": 9.9122
+      },
+      "epoch5": {
+        "precision": 0.24109,
+        "recall": 0.19443,
+        "map50": 0.14213,
+        "map50_95": 0.07379
+      },
+      "best_eval": {
+        "precision": 0.24151772295054963,
+        "recall": 0.1947574970672591,
+        "map50": 0.14290891413848147,
+        "map50_95": 0.07412907581209939
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.17224715050248374,
+          "recall": 0.31094527363184077,
+          "map50": 0.14414284104116837,
+          "map50_95": 0.05106804110233591
+        },
+        "people": {
+          "precision": 0.4097181898089238,
+          "recall": 0.13177860499869562,
+          "map50": 0.1332432397945635,
+          "map50_95": 0.03979999138819667
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.1585121551155959,
+        "inference": 1.5381940602575896,
+        "loss": 0.00043448722119575675,
+        "postprocess": 2.6878321386770057
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s1_edge27_spr_p4p5/runs/spr-p4p5_reg16_standard_attn-none_5e_seed42/weights/best.pt",
+      "local_results_csv": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s1_edge27_spr_p4p5/runs/spr-p4p5_reg16_standard_attn-none_5e_seed42/results.csv",
+      "delta_best_eval_vs_b0": {
+        "precision": 0.012802564148812173,
+        "recall": -0.0076097365992721655,
+        "map50": 0.0017120475111864208,
+        "map50_95": 0.0018309213629159604
+      },
+      "delta_epoch5_vs_b0": {
+        "precision": 0.013729999999999992,
+        "recall": -0.007890000000000008,
+        "map50": 0.0012500000000000011,
+        "map50_95": 0.0017299999999999954
+      }
+    },
+    "S2": {
+      "id": "S2",
+      "preset": "edge27_spr_p3p4",
+      "spr_placements": [
+        "p3_p4"
+      ],
+      "status": "complete",
+      "complexity": {
+        "params": 1867710,
+        "gflops": 9.7065
+      },
+      "epoch5": {
+        "precision": 0.30956,
+        "recall": 0.19246,
+        "map50": 0.14275,
+        "map50_95": 0.07392
+      },
+      "best_eval": {
+        "precision": 0.3091947066320522,
+        "recall": 0.19205084053850302,
+        "map50": 0.143391986205683,
+        "map50_95": 0.07414050020698484
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.17474775760105593,
+          "recall": 0.3229308005427408,
+          "map50": 0.1509854202902986,
+          "map50_95": 0.05375773662582108
+        },
+        "people": {
+          "precision": 0.36506327539384864,
+          "recall": 0.14029268292682928,
+          "map50": 0.12949196590120168,
+          "map50_95": 0.037690484975212164
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.1677097135229715,
+        "inference": 1.5486984324870319,
+        "loss": 0.00043937776008931865,
+        "postprocess": 2.6998447518080138
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s2_edge27_spr_p3p4/runs/spr-p3p4_reg16_standard_attn-none_5e_seed42/weights/best.pt",
+      "local_results_csv": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s2_edge27_spr_p3p4/runs/spr-p3p4_reg16_standard_attn-none_5e_seed42/results.csv",
+      "delta_best_eval_vs_b0": {
+        "precision": 0.08047954783031472,
+        "recall": -0.010316393128028234,
+        "map50": 0.002195119578387944,
+        "map50_95": 0.001842345757801414
+      },
+      "delta_epoch5_vs_b0": {
+        "precision": 0.0822,
+        "recall": -0.009860000000000008,
+        "map50": 0.0018699999999999828,
+        "map50_95": 0.0018600000000000005
+      }
+    },
+    "S3": {
+      "id": "S3",
+      "preset": "edge27_spr_p2p3",
+      "spr_placements": [
+        "p2_p3"
+      ],
+      "status": "complete",
+      "complexity": {
+        "params": 1964798,
+        "gflops": 9.7118
+      },
+      "epoch5": {
+        "precision": 0.30379,
+        "recall": 0.19881,
+        "map50": 0.1349,
+        "map50_95": 0.06979
+      },
+      "best_eval": {
+        "precision": 0.30688413687709165,
+        "recall": 0.19878203921314952,
+        "map50": 0.1356141230087868,
+        "map50_95": 0.07016169579752962
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.1345935884544741,
+          "recall": 0.3510854816824966,
+          "map50": 0.14214559823810646,
+          "map50_95": 0.05117970674431509
+        },
+        "people": {
+          "precision": 0.341241540035982,
+          "recall": 0.147467784450005,
+          "map50": 0.10935479294031403,
+          "map50_95": 0.03129641106552576
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.16779750729880227,
+        "inference": 1.7555299781282099,
+        "loss": 0.0004527518464856523,
+        "postprocess": 3.381692009106103
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s3_edge27_spr_p2p3/runs/spr-p2p3_reg16_standard_attn-none_5e_seed42/weights/best.pt",
+      "local_results_csv": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s3_edge27_spr_p2p3/runs/spr-p2p3_reg16_standard_attn-none_5e_seed42/results.csv",
+      "delta_best_eval_vs_b0": {
+        "precision": 0.0781689780753542,
+        "recall": -0.003585194453381735,
+        "map50": -0.005582743618508246,
+        "map50_95": -0.002136458651653808
+      },
+      "delta_epoch5_vs_b0": {
+        "precision": 0.07643,
+        "recall": -0.003510000000000013,
+        "map50": -0.005980000000000013,
+        "map50_95": -0.0022699999999999942
+      }
+    },
+    "S4": {
+      "id": "S4",
+      "preset": "edge27_spr_p3p4_p4p5",
+      "spr_placements": [
+        "p3_p4",
+        "p4_p5"
+      ],
+      "status": "complete",
+      "complexity": {
+        "params": 1607998,
+        "gflops": 9.4981
+      },
+      "epoch5": {
+        "precision": 0.2291,
+        "recall": 0.19711,
+        "map50": 0.13824,
+        "map50_95": 0.07221
+      },
+      "best_eval": {
+        "precision": 0.23091129615457778,
+        "recall": 0.1971068764831114,
+        "map50": 0.13845608798785708,
+        "map50_95": 0.07264072154201212
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.1422916051903854,
+          "recall": 0.3285843509724107,
+          "map50": 0.12991453354070504,
+          "map50_95": 0.047521127863478896
+        },
+        "people": {
+          "precision": 0.3485887966747702,
+          "recall": 0.13209756097560976,
+          "map50": 0.11274522137638913,
+          "map50_95": 0.033757374188894976
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.16522136312451838,
+        "inference": 1.5486606697160068,
+        "loss": 0.00043470804252615877,
+        "postprocess": 2.0724991259323797
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s4_edge27_spr_p3p4_p4p5/runs/spr-p3p4-p4p5_reg16_standard_attn-none_5e_seed42/weights/best.pt",
+      "local_results_csv": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s4_edge27_spr_p3p4_p4p5/runs/spr-p3p4-p4p5_reg16_standard_attn-none_5e_seed42/results.csv",
+      "delta_best_eval_vs_b0": {
+        "precision": 0.002196137352840327,
+        "recall": -0.005260357183419856,
+        "map50": -0.002740778639437974,
+        "map50_95": 0.00034256709282869113
+      },
+      "delta_epoch5_vs_b0": {
+        "precision": 0.0017399999999999916,
+        "recall": -0.005209999999999992,
+        "map50": -0.0026400000000000035,
+        "map50_95": 0.00014999999999999736
+      }
+    },
+    "S5": {
+      "id": "S5",
+      "preset": "edge27_spr_p2p3_p3p4",
+      "spr_placements": [
+        "p2_p3",
+        "p3_p4"
+      ],
+      "status": "complete",
+      "complexity": {
+        "params": 1836158,
+        "gflops": 9.2977
+      },
+      "epoch5": {
+        "precision": 0.40081,
+        "recall": 0.18963,
+        "map50": 0.13444,
+        "map50_95": 0.06999
+      },
+      "best_eval": {
+        "precision": 0.4032670376700784,
+        "recall": 0.18882966312719818,
+        "map50": 0.13472732024536127,
+        "map50_95": 0.0701596306623877
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.16308269167943068,
+          "recall": 0.29341926729986434,
+          "map50": 0.12348130174926666,
+          "map50_95": 0.04344919364017784
+        },
+        "people": {
+          "precision": 0.409209833560447,
+          "recall": 0.08609115240612218,
+          "map50": 0.10345636916105543,
+          "map50_95": 0.03056557145455157
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.17624274819918753,
+        "inference": 1.7373094616584115,
+        "loss": 0.0005092426668640131,
+        "postprocess": 2.9509687007377887
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s5_edge27_spr_p2p3_p3p4/runs/spr-p2p3-p3p4_reg16_standard_attn-none_5e_seed42/weights/best.pt",
+      "local_results_csv": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s5_edge27_spr_p2p3_p3p4/runs/spr-p2p3-p3p4_reg16_standard_attn-none_5e_seed42/results.csv",
+      "delta_best_eval_vs_b0": {
+        "precision": 0.17455187886834092,
+        "recall": -0.013537570539333077,
+        "map50": -0.006469546381933783,
+        "map50_95": -0.002138523786795729
+      },
+      "delta_epoch5_vs_b0": {
+        "precision": 0.17345,
+        "recall": -0.012690000000000007,
+        "map50": -0.006440000000000001,
+        "map50_95": -0.0020700000000000024
+      }
+    },
+    "S6": {
+      "id": "S6",
+      "preset": "edge27_spr_p2p3_p4p5",
+      "spr_placements": [
+        "p2_p3",
+        "p4_p5"
+      ],
+      "status": "complete",
+      "complexity": {
+        "params": 1705086,
+        "gflops": 9.5034
+      },
+      "epoch5": {
+        "precision": 0.20174,
+        "recall": 0.19314,
+        "map50": 0.13407,
+        "map50_95": 0.06917
+      },
+      "best_eval": {
+        "precision": 0.20296130779479277,
+        "recall": 0.19333485327600575,
+        "map50": 0.1346408106259312,
+        "map50_95": 0.06956746631963093
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.1410182648265064,
+          "recall": 0.3277928539122569,
+          "map50": 0.12916423960526177,
+          "map50_95": 0.046510160272328904
+        },
+        "people": {
+          "precision": 0.3685772921443355,
+          "recall": 0.128,
+          "map50": 0.11091556645853666,
+          "map50_95": 0.03336478205978195
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.16388903832127658,
+        "inference": 1.739982476285986,
+        "loss": 0.0004761842538642588,
+        "postprocess": 3.3240047353495084
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s6_edge27_spr_p2p3_p4p5/runs/spr-p2p3-p4p5_reg16_standard_attn-none_5e_seed42/weights/best.pt",
+      "local_results_csv": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s6_edge27_spr_p2p3_p4p5/runs/spr-p2p3-p4p5_reg16_standard_attn-none_5e_seed42/results.csv",
+      "delta_best_eval_vs_b0": {
+        "precision": -0.02575385100694469,
+        "recall": -0.009032380390525507,
+        "map50": -0.006556056001363858,
+        "map50_95": -0.0027306881295525026
+      },
+      "delta_epoch5_vs_b0": {
+        "precision": -0.025620000000000004,
+        "recall": -0.009179999999999994,
+        "map50": -0.0068100000000000105,
+        "map50_95": -0.0028900000000000037
+      }
+    },
+    "S7": {
+      "id": "S7",
+      "preset": "edge27_spr_all",
+      "spr_placements": [
+        "p2_p3",
+        "p3_p4",
+        "p4_p5"
+      ],
+      "status": "complete",
+      "complexity": {
+        "params": 1576446,
+        "gflops": 9.0893
+      },
+      "epoch5": {
+        "precision": 0.20762,
+        "recall": 0.19079,
+        "map50": 0.13405,
+        "map50_95": 0.06959
+      },
+      "best_eval": {
+        "precision": 0.2084955602555396,
+        "recall": 0.19088369568290203,
+        "map50": 0.1347112052795544,
+        "map50_95": 0.0699596335504546
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.16630868320757283,
+          "recall": 0.2784756248424,
+          "map50": 0.11705787535507335,
+          "map50_95": 0.041119649543412004
+        },
+        "people": {
+          "precision": 0.3427659162430761,
+          "recall": 0.11004878048780488,
+          "map50": 0.10127266803631635,
+          "map50_95": 0.030046693000871157
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.16669071715280082,
+        "inference": 1.7004922299110394,
+        "loss": 0.0004589872226653532,
+        "postprocess": 3.4090943303201704
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s7_edge27_spr_all/runs/spr-p2p3-p3p4-p4p5_reg16_standard_attn-none_5e_seed42/weights/best.pt",
+      "local_results_csv": "/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s7_edge27_spr_all/runs/spr-p2p3-p3p4-p4p5_reg16_standard_attn-none_5e_seed42/results.csv",
+      "delta_best_eval_vs_b0": {
+        "precision": -0.020219598546197842,
+        "recall": -0.011483537983629222,
+        "map50": -0.0064856613477406455,
+        "map50_95": -0.002338520898728824
+      },
+      "delta_epoch5_vs_b0": {
+        "precision": -0.019740000000000008,
+        "recall": -0.011530000000000012,
+        "map50": -0.006830000000000003,
+        "map50_95": -0.00247
+      }
+    }
+  },
+  "ranking_best_eval_map50_95": [
+    "S2",
+    "S1",
+    "S4",
+    "B0",
+    "S3",
+    "S5",
+    "S7",
+    "S6"
+  ],
+  "ranking_epoch5_map50_95": [
+    "S2",
+    "S1",
+    "S4",
+    "B0",
+    "S5",
+    "S3",
+    "S7",
+    "S6"
+  ],
+  "caution": "deterministic=false and only 5 epochs; use solely to shortlist placements for 50e confirmation.",
+  "completed_variants": 8,
+  "failed_variants": 0
+}

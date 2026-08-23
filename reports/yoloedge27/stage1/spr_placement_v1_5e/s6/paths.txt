@@ -1,0 +1,7 @@
+id=S6
+preset=edge27_spr_p2p3_p4p5
+spr_placements=p2_p3,p4_p5
+root=/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s6_edge27_spr_p2p3_p4p5
+best_pt=/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s6_edge27_spr_p2p3_p4p5/runs/spr-p2p3-p4p5_reg16_standard_attn-none_5e_seed42/weights/best.pt
+results_csv=/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e/s6_edge27_spr_p2p3_p4p5/runs/spr-p2p3-p4p5_reg16_standard_attn-none_5e_seed42/results.csv
+note=local 5e placement screening; checkpoints remain runner-local

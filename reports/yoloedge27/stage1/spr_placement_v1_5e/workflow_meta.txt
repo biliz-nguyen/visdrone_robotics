@@ -1,0 +1,7 @@
+branch=research/yoloedge27-spr-placement-v1
+head=6955ae4d74877aea7c1a404687e4c2cbfe8c13aa
+screen_root=/home/minh/yoloedge27_experiments/stage1/spr_placement_v1_5e
+variants=B0,S1,S2,S3,S4,S5,S6,S7
+epochs_each=5
+assignment=standard_TAL
+note=local screening only; no checkpoints committed; final evidence requires locked Kaggle reruns
