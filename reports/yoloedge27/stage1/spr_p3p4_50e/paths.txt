@@ -1,0 +1,9 @@
+branch=research/yoloedge27-spr-p3p4-50e
+preset=edge27_spr_p3p4
+placement=p3_p4
+epochs=50
+root=/home/minh/yoloedge27_experiments/stage1/edge27_spr_p3p4_50e
+best_pt=/home/minh/yoloedge27_experiments/stage1/edge27_spr_p3p4_50e/runs/spr-p3p4_reg16_standard_attn-none_50e_seed42/weights/best.pt
+results_csv=/home/minh/yoloedge27_experiments/stage1/edge27_spr_p3p4_50e/runs/spr-p3p4_reg16_standard_attn-none_50e_seed42/results.csv
+assignment=standard_TAL
+note=local fair 50e confirmation only; S4 combination is not authorized in this workflow

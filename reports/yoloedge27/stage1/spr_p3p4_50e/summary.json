@@ -1,0 +1,79 @@
+{
+  "purpose": "Local fair 50e S2 P3->P4 confirmation; not final Kaggle paper evidence.",
+  "s1": "single SPR-Down at P4->P5",
+  "s2": "single SPR-Down at P3->P4",
+  "protocol_match": "same optimizer/augmentation/imgsz/batch/nbs/seed/scratch settings; placement is the architectural variable",
+  "s1_50e": {
+    "precision": 0.4072744763733994,
+    "recall": 0.32474938272400605,
+    "map50": 0.3032701546493718,
+    "map50_95": 0.17178436230979457
+  },
+  "s2_50e": {
+    "precision": 0.3931703101772991,
+    "recall": 0.32317276709625364,
+    "map50": 0.2917985708864201,
+    "map50_95": 0.16594093340791333
+  },
+  "delta_s2_minus_s1": {
+    "precision": -0.014104166196100332,
+    "recall": -0.001576615627752409,
+    "map50": -0.01147158376295171,
+    "map50_95": -0.005843428901881248
+  },
+  "focus": {
+    "pedestrian": {
+      "s1_p4p5": {
+        "precision": 0.392798016465445,
+        "recall": 0.4090909090909091,
+        "map50": 0.3550641540810743,
+        "map50_95": 0.15159724592513762
+      },
+      "s2_p3p4": {
+        "precision": 0.36592569908275696,
+        "recall": 0.40784712799638173,
+        "map50": 0.3461726159583217,
+        "map50_95": 0.14605516066756552
+      },
+      "delta_s2_minus_s1": {
+        "precision": -0.026872317382688027,
+        "recall": -0.0012437810945273853,
+        "map50": -0.008891538122752563,
+        "map50_95": -0.005542085257572105
+      }
+    },
+    "people": {
+      "s1_p4p5": {
+        "precision": 0.46702300365873683,
+        "recall": 0.3017732000671955,
+        "map50": 0.28795123841296055,
+        "map50_95": 0.10460663481030316
+      },
+      "s2_p3p4": {
+        "precision": 0.44501666644516613,
+        "recall": 0.2911219512195122,
+        "map50": 0.2625681882160593,
+        "map50_95": 0.09350850123744
+      },
+      "delta_s2_minus_s1": {
+        "precision": -0.022006337213570704,
+        "recall": -0.010651248847683314,
+        "map50": -0.025383050196901236,
+        "map50_95": -0.011098133572863156
+      }
+    }
+  },
+  "complexity_5e_measured_same_architecture": {
+    "s1_p4p5": {
+      "params": 1736638,
+      "gflops": 9.9122
+    },
+    "s2_p3p4": {
+      "params": 1867710,
+      "gflops": 9.7065
+    }
+  },
+  "s2_weights": "/home/minh/yoloedge27_experiments/stage1/edge27_spr_p3p4_50e/runs/spr-p3p4_reg16_standard_attn-none_50e_seed42/weights/best.pt",
+  "next_ablation_if_warranted": "S4 = SPR at P3->P4 + P4->P5; run 50e only after reviewing S2 50e because S4 was weaker than S1/S2 at 5e.",
+  "caution": "single local run, deterministic=false; screening/confirmation only. Final paper evidence must be rerun under locked Kaggle protocol."
+}
