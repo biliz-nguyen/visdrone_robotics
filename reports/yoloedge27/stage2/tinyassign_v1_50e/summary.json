@@ -1,0 +1,76 @@
+{
+  "purpose": "Local fair 50e Stage2 screening; not final Kaggle paper evidence.",
+  "control": "SPR-Down v1 + standard TAL, completed local 50e run",
+  "candidate": "SPR-Down v1 + Tiny Candidate Recovery, local 50e run",
+  "protocol_match": "same Stage1 optimizer/augmentation/imgsz/batch/nbs/seed; only assignment changes",
+  "mechanism_gate_tal_exact": {
+    "threshold": 0.05,
+    "diagnostic": "Ultralytics v8.4.56 TAL-exact candidate region",
+    "tiny_starved_fraction": 0.18844265268495908,
+    "pedestrian_people_tiny_starved_fraction": 0.22056796250344637,
+    "gate": "PASS_RUN_5E",
+    "note": "Post-hoc mechanism check only; no retraining performed."
+  },
+  "control_50e": {
+    "precision": 0.4072744763733994,
+    "recall": 0.32474938272400605,
+    "map50": 0.3032701546493718,
+    "map50_95": 0.17178436230979457
+  },
+  "tcr_50e": {
+    "precision": 0.4260573103288996,
+    "recall": 0.3163187693830847,
+    "map50": 0.3021760401284487,
+    "map50_95": 0.17160781198149447
+  },
+  "delta_50e": {
+    "precision": 0.018782833955500178,
+    "recall": -0.008430613340921378,
+    "map50": -0.0010941145209231173,
+    "map50_95": -0.00017655032830010686
+  },
+  "focus": {
+    "pedestrian": {
+      "control": {
+        "precision": 0.392798016465445,
+        "recall": 0.4090909090909091,
+        "map50": 0.3550641540810743,
+        "map50_95": 0.15159724592513762
+      },
+      "tcr": {
+        "precision": 0.4028677122911026,
+        "recall": 0.40027137042062416,
+        "map50": 0.35209002374283055,
+        "map50_95": 0.14904509655608025
+      },
+      "delta": {
+        "precision": 0.010069695825657587,
+        "recall": -0.008819538670284954,
+        "map50": -0.00297413033824373,
+        "map50_95": -0.0025521493690573716
+      }
+    },
+    "people": {
+      "control": {
+        "precision": 0.46702300365873683,
+        "recall": 0.3017732000671955,
+        "map50": 0.28795123841296055,
+        "map50_95": 0.10460663481030316
+      },
+      "tcr": {
+        "precision": 0.46712911332520357,
+        "recall": 0.279219512195122,
+        "map50": 0.2732359445222336,
+        "map50_95": 0.098173233043124
+      },
+      "delta": {
+        "precision": 0.00010610966646673603,
+        "recall": -0.022553687872073513,
+        "map50": -0.014715293890726955,
+        "map50_95": -0.006433401767179159
+      }
+    }
+  },
+  "candidate_weights": "/home/minh/yoloedge27_experiments/stage2/edge27_spr_tcr_v1_50e/runs/sprdown_reg16_standard_tcr_attn-none_50e_seed42/weights/best.pt",
+  "caution": "single local runs with deterministic=false; use for screening only."
+}

@@ -1,0 +1,34 @@
+INFO: batch != nbs. Ultralytics will use gradient accumulation so the nominal batch remains nbs.
+Official VisDrone -> YOLO cache: /home/minh/Desktop/project/visdrone_local_project/dataset/.visdrone_yolo
+  train: images=6471 objects=343202 ignored=10345 duplicates_removed=3
+  val: images=548 objects=38759 ignored=1410 duplicates_removed=0
+  test: images=1610 objects=75102 ignored=2445 duplicates_removed=0
+==========================================================================================
+SANITY CHECK
+==========================================================================================
+Ultralytics: 8.4.56
+Source: /home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/third_party/ultralytics/ultralytics/__init__.py
+Data YAML: /home/minh/yoloedge27_experiments/stage2/edge27_spr_tcr_v1_50e/generated/visdrone_local.yaml
+Model YAML: /home/minh/yoloedge27_experiments/stage2/edge27_spr_tcr_v1_50e/generated/model_sprdown_reg16_standard_tcr_attn-none_50e_seed42.yaml
+WARNING ⚠️ no model scale passed. Assuming scale='n'.
+
+==========================================================================================
+SANITY CHECK PASSED
+==========================================================================================
+Preset: edge27_spr_tcr_v1
+Experiment: sprdown_reg16_standard_tcr_attn-none_50e_seed42
+Backbone downsample: sprdown
+Assigner: TinyCandidateRecoveryAssigner
+Tiny min side: 16.0
+Min candidates: 4
+REAL reg_max: 16
+REAL Detect.no: 74
+Strides: [4, 8, 16]
+SPRDown count: 1
+AConv count: 0
+Attention: none
+Loss: standard
+Params: 1,736,638 (1.7366 M)
+GFLOPs: 9.9122
+Pretrained: False
+==========================================================================================
