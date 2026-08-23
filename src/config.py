@@ -127,6 +127,7 @@ def _validate(cfg: dict[str, Any]) -> None:
     if cfg.get("assigner_mode", "standard") not in {
         "standard",
         "tiny_recovery",
+        "tiny_quality",
     }:
         raise ValueError(cfg.get("assigner_mode"))
     if int(cfg["reg_max"]) not in {1, 2, 4, 8, 16}:
@@ -143,12 +144,26 @@ def _validate(cfg: dict[str, Any]) -> None:
             "This project is locked to scratch training: pretrained=false"
         )
 
-    if cfg.get("assigner_mode") == "tiny_recovery":
+    assigner_mode = cfg.get("assigner_mode", "standard")
+    if assigner_mode == "tiny_recovery":
         tiny = cfg.get("tiny_assigner", {})
         if float(tiny.get("tiny_min_side", 0)) <= 0:
             raise ValueError("tiny_assigner.tiny_min_side must be > 0")
         if int(tiny.get("min_candidates", 0)) < 1:
             raise ValueError("tiny_assigner.min_candidates must be >= 1")
+
+    if assigner_mode == "tiny_quality":
+        quality = cfg.get("tiny_quality_assigner", {})
+        tiny_min_side = float(quality.get("tiny_min_side", 0))
+        beta_floor = float(quality.get("beta_floor", 0))
+        if tiny_min_side <= 0:
+            raise ValueError("tiny_quality_assigner.tiny_min_side must be > 0")
+        if not (0.0 < beta_floor <= 6.0):
+            raise ValueError("tiny_quality_assigner.beta_floor must be in (0, 6]")
+
+    if assigner_mode in {"tiny_recovery", "tiny_quality"}:
+        if cfg["backbone_down"] != "sprdown":
+            raise ValueError("Stage-2 tiny assignment must use SPR-Down v1")
         if cfg["loss_mode"] != "standard":
             raise ValueError("Stage-2 tiny assignment must keep standard loss")
         if cfg["attention"] != "none":
@@ -174,11 +189,12 @@ def experiment_tag(cfg: dict[str, Any]) -> str:
             f"nwd{int(float(nwd['nwd_weight']) * 100)}"
         )
 
-    assign_tag = (
-        "tal"
-        if cfg.get("assigner_mode", "standard") == "standard"
-        else "tcr"
-    )
+    mode = cfg.get("assigner_mode", "standard")
+    assign_tag = {
+        "standard": "tal",
+        "tiny_recovery": "tcr",
+        "tiny_quality": "taq",
+    }[mode]
 
     return (
         f"{cfg['backbone_down']}_"
