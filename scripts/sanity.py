@@ -56,6 +56,12 @@ def main():
         bins = normalize_head_bins(cfg)
         assert list(detect.reg_bins) == bins
         assert [m[-1].out_channels for m in detect.cv2] == [4 * x for x in bins]
+    elif head_mode == "quality_overconfidence":
+        assert detect.__class__.__name__ == "QualityOverconfidenceDetect"
+        assert int(detect.reg_max) == 1
+        assert abs(float(detect.qoc_lambda) - float(cfg["qoc_lambda"])) < 1e-12
+        assert abs(float(detect.qoc_margin) - float(cfg["qoc_margin"])) < 1e-12
+        bins = [1, 1, 1]
     else:
         bins = [int(detect.reg_max)] * len(strides)
         assert detect.__class__.__name__ == "Detect"
@@ -74,6 +80,10 @@ def main():
     if head_mode == "stride_reg":
         assert criterion.__class__.__name__ == "StrideRegDetectionLoss"
         assert list(criterion.reg_bins) == bins
+    elif head_mode == "quality_overconfidence":
+        assert criterion.__class__.__name__ == "QualityOverconfidenceLoss"
+        assert abs(float(criterion.qoc_lambda) - float(cfg["qoc_lambda"])) < 1e-12
+        assert abs(float(criterion.qoc_margin) - float(cfg["qoc_margin"])) < 1e-12
 
     params = sum(p.numel() for p in model.model.parameters())
     model.model.eval()
@@ -106,6 +116,9 @@ def main():
     print("Head:", detect.__class__.__name__)
     print("Head mode:", head_mode)
     print("Regression bins P2/P3/P4:", bins)
+    if head_mode == "quality_overconfidence":
+        print("QOC lambda:", criterion.qoc_lambda)
+        print("QOC margin:", criterion.qoc_margin)
     print("Assigner:", assigner_name)
     print("Strides:", strides)
     print("SPRDown count:", len(sprdowns))
