@@ -238,7 +238,10 @@ class TinyShiftConsistencyLoss(v8DetectionLoss):
                     & (shifted_gt[..., 2] <= image_w)
                     & (shifted_gt[..., 3] <= image_h)
                 )
-                shifted_mask_gt = mask_gt & boundary_ok.unsqueeze(-1)
+                # TaskAlignedAssigner may internally cast/mutate mask_gt to the
+                # prediction dtype. Re-establish boolean semantics before any
+                # logical composition so CUDA never receives bitwise_and on float.
+                shifted_mask_gt = mask_gt.bool() & boundary_ok.unsqueeze(-1)
                 shifted_gt[..., (0, 2)] = shifted_gt[..., (0, 2)].clamp(0.0, image_w)
                 shifted_gt[..., (1, 3)] = shifted_gt[..., (1, 3)].clamp(0.0, image_h)
 
@@ -264,7 +267,7 @@ class TinyShiftConsistencyLoss(v8DetectionLoss):
                 if max_gt > 0:
                     gt_flat = gt_bboxes.reshape(-1, 4)
                     shifted_gt_flat = shifted_gt.reshape(-1, 4)
-                    gt_valid = mask_gt.squeeze(-1).reshape(-1)
+                    gt_valid = mask_gt.squeeze(-1).reshape(-1).bool()
                     boundary_flat = boundary_ok.reshape(-1)
                     widths = (gt_flat[:, 2] - gt_flat[:, 0]).clamp_min(0.0)
                     heights = (gt_flat[:, 3] - gt_flat[:, 1]).clamp_min(0.0)
