@@ -34,16 +34,21 @@ def patch_ultralytics(cfg: dict) -> None:
         project / "src" / "custom_blocks.py": module_dir / "visdrone_custom_blocks.py",
         project / "src" / "stride_reg_head.py": module_dir / "visdrone_stride_reg_head.py",
         project / "src" / "stride_reg_loss.py": utils_dir / "visdrone_stride_reg_loss.py",
+        project / "src" / "pixel_stable_assigner.py": utils_dir / "visdrone_pixel_stable_assigner.py",
     }
     for src, dst in copies.items():
         shutil.copy2(src, dst)
 
     _patch_tasks(tasks_py)
 
-    # This branch intentionally keeps the standard localization loss. The
-    # mixed-bin head has its own criterion but does not change TAL/CIoU/cls.
     if cfg["loss_mode"] != "standard":
-        raise ValueError("Head-study branch supports standard loss only")
+        raise ValueError("Pixel-stable assignment screen keeps the standard loss only")
+
+    mode = cfg.get("assigner_mode", "standard")
+    if mode == "pixel_stable":
+        _patch_pixel_stable_assigner(loss_py, cfg)
+    elif mode != "standard":
+        raise ValueError(f"Unsupported assigner_mode={mode!r}")
 
     for path in [tasks_py, loss_py, *copies.values()]:
         compile(path.read_text(encoding="utf-8"), str(path), "exec")
@@ -110,5 +115,45 @@ def _patch_tasks(tasks_py: Path) -> None:
     if criterion_old not in text:
         raise RuntimeError("Cannot find DetectionModel.init_criterion in tasks.py")
     text = text.replace(criterion_old, criterion_new, 1)
-
     tasks_py.write_text(text, encoding="utf-8")
+
+
+def _task_aligned_constructor() -> str:
+    return """        self.assigner = TaskAlignedAssigner(
+            topk=tal_topk,
+            num_classes=self.nc,
+            alpha=0.5,
+            beta=6.0,
+            stride=self.stride.tolist(),
+            topk2=tal_topk2,
+        )"""
+
+
+def _patch_pixel_stable_assigner(loss_py: Path, cfg: dict) -> None:
+    text = loss_py.read_text(encoding="utf-8")
+    import_line = (
+        "from ultralytics.utils.visdrone_pixel_stable_assigner import "
+        "TinyPixelStableAssigner"
+    )
+    if import_line not in text:
+        anchor = "from ultralytics.utils.torch_utils import autocast\n"
+        if anchor not in text:
+            raise RuntimeError("Cannot find loss.py import anchor")
+        text = text.replace(anchor, anchor + import_line + "\n", 1)
+
+    old = _task_aligned_constructor()
+    p = cfg["pixel_stable_assigner"]
+    new = f"""        self.assigner = TinyPixelStableAssigner(
+            topk=tal_topk,
+            num_classes=self.nc,
+            alpha=0.5,
+            beta=6.0,
+            stride=self.stride.tolist(),
+            topk2=tal_topk2,
+            tiny_min_side={float(p['tiny_min_side'])},
+            perturb_px={float(p['perturb_px'])},
+        )"""
+    if old not in text:
+        raise RuntimeError("Cannot find TaskAlignedAssigner construction in loss.py")
+    text = text.replace(old, new, 1)
+    loss_py.write_text(text, encoding="utf-8")
