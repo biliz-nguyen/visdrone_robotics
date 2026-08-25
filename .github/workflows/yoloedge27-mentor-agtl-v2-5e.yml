@@ -48,9 +48,10 @@ jobs:
           echo "HEAD=$(git rev-parse HEAD)"
           git log -1 --oneline
           grep -q 'AdvantageGatedMentorDetect' src/mentor_transfer_head.py
-          grep -q 'object_balanced_gate' src/mentor_transfer_loss.py
-          grep -q 'group candidates by (image, assigned GT)' scripts/run_agtl_test.py
-          grep -q 'same TAL weight and target_scores_sum denominator' src/mentor_transfer_loss.py
+          grep -q 'def object_balanced_gate' src/mentor_transfer_loss.py
+          grep -q 'gate = object_balanced_gate' src/mentor_transfer_loss.py
+          grep -q 'positive_gt_idx = target_gt_idx\[fg_mask\]' src/mentor_transfer_loss.py
+          grep -q 'mentor_term = (' src/mentor_transfer_loss.py
           test -f "$MENTOR_PT"
           test "$YOLOEDGE27_MENTOR_PT" = "$MENTOR_PT"
           test -f "$YOLOEDGE27_MENTOR_PT"
