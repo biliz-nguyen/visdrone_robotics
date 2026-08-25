@@ -30,12 +30,7 @@ def cardinal_shifted_boxes(boxes: torch.Tensor, perturb_px: float) -> tuple[torc
     p = float(perturb_px)
     if p <= 0:
         raise ValueError("perturb_px must be > 0")
-    offsets = (
-        (-p, 0.0),
-        (p, 0.0),
-        (0.0, -p),
-        (0.0, p),
-    )
+    offsets = ((-p, 0.0), (p, 0.0), (0.0, -p), (0.0, p))
     out = []
     for dx, dy in offsets:
         offset = boxes.new_tensor([dx, dy, dx, dy])
@@ -44,13 +39,7 @@ def cardinal_shifted_boxes(boxes: torch.Tensor, perturb_px: float) -> tuple[torc
 
 
 def pixel_stable_quality(standard_iou: torch.Tensor, shifted_ious: torch.Tensor) -> torch.Tensor:
-    """Geometric blend of nominal IoU and mean one-pixel-perturbed IoU.
-
-    ``shifted_ious`` must have one extra leading/cardinal dimension. Inputs are
-    clamped because the assigner's IoU implementation can have tiny numerical
-    excursions. The result stays in [0, 1] and equals the nominal IoU when all
-    shifted IoUs equal it.
-    """
+    """Geometric blend of nominal IoU and mean one-pixel-perturbed IoU."""
     if shifted_ious.ndim != standard_iou.ndim + 1:
         raise ValueError("shifted_ious must add exactly one cardinal dimension")
     q0 = standard_iou.clamp(0.0, 1.0)
@@ -61,13 +50,7 @@ def pixel_stable_quality(standard_iou: torch.Tensor, shifted_ious: torch.Tensor)
 class TinyPixelStableAssigner(TaskAlignedAssigner):
     """Task-Aligned Assigner with pixel-stable ranking for tiny GT boxes."""
 
-    def __init__(
-        self,
-        *args,
-        tiny_min_side: float = 16.0,
-        perturb_px: float = 1.0,
-        **kwargs,
-    ):
+    def __init__(self, *args, tiny_min_side: float = 16.0, perturb_px: float = 1.0, **kwargs):
         super().__init__(*args, **kwargs)
         self.tiny_min_side = float(tiny_min_side)
         self.perturb_px = float(perturb_px)
@@ -76,32 +59,16 @@ class TinyPixelStableAssigner(TaskAlignedAssigner):
         if self.perturb_px <= 0:
             raise ValueError("perturb_px must be > 0")
 
-    def get_box_metrics(
-        self,
-        pd_scores,
-        pd_bboxes,
-        gt_labels,
-        gt_bboxes,
-        mask_gt,
-    ):
-        """Compute TAL metrics, replacing only tiny-GT ranking quality.
-
-        The implementation mirrors Ultralytics TAL's tensor shapes deliberately
-        to avoid changing candidate masks/top-k semantics. ``mask_gt`` is cast
-        to bool explicitly because some upstream TAL paths use numeric masks.
-        """
+    def get_box_metrics(self, pd_scores, pd_bboxes, gt_labels, gt_bboxes, mask_gt):
+        """Compute TAL metrics, replacing only tiny-GT ranking quality."""
         na = pd_bboxes.shape[-2]
         pair_mask = mask_gt.bool()
 
         overlaps = torch.zeros(
-            [self.bs, self.n_max_boxes, na],
-            dtype=pd_bboxes.dtype,
-            device=pd_bboxes.device,
+            [self.bs, self.n_max_boxes, na], dtype=pd_bboxes.dtype, device=pd_bboxes.device
         )
         bbox_scores = torch.zeros(
-            [self.bs, self.n_max_boxes, na],
-            dtype=pd_scores.dtype,
-            device=pd_scores.device,
+            [self.bs, self.n_max_boxes, na], dtype=pd_scores.dtype, device=pd_scores.device
         )
 
         ind = torch.zeros([2, self.bs, self.n_max_boxes], dtype=torch.long)
@@ -112,11 +79,9 @@ class TinyPixelStableAssigner(TaskAlignedAssigner):
 
         pd_boxes = pd_bboxes.unsqueeze(1).expand(-1, self.n_max_boxes, -1, -1)[pair_mask]
         gt_boxes = gt_bboxes.unsqueeze(2).expand(-1, -1, na, -1)[pair_mask]
-        nominal = self.iou_calculation(gt_boxes, pd_boxes).clamp_min_(0.0)
+        nominal = self.iou_calculation(gt_boxes, pd_boxes).reshape(-1).clamp_min_(0.0)
         overlaps[pair_mask] = nominal
 
-        # Default is exact standard TAL quality. Only valid tiny GT/candidate
-        # pairs are replaced by the perturbation-stable quality.
         ranking_quality = overlaps.clone()
         wh = (gt_bboxes[..., 2:4] - gt_bboxes[..., 0:2]).clamp_min(0.0)
         tiny_gt = wh.amin(dim=-1, keepdim=True) < self.tiny_min_side
@@ -128,7 +93,8 @@ class TinyPixelStableAssigner(TaskAlignedAssigner):
             tiny_nominal = overlaps[tiny_pairs]
             shifted = []
             for shifted_gt in cardinal_shifted_boxes(tiny_gt_boxes, self.perturb_px):
-                shifted.append(self.iou_calculation(shifted_gt, tiny_pd).clamp_min_(0.0))
+                q = self.iou_calculation(shifted_gt, tiny_pd).reshape(-1).clamp_min_(0.0)
+                shifted.append(q)
             shifted_ious = torch.stack(shifted, dim=0)
             ranking_quality[tiny_pairs] = pixel_stable_quality(tiny_nominal, shifted_ious)
 
