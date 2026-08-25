@@ -6,6 +6,10 @@ on:
       - research/yoloedge27-mentor-agtl-v1
     paths:
       - .github/workflows/yoloedge27-mentor-agtl-v1-5e.yml
+      - scripts/run_agtl_test.py
+      - src/mentor_transfer_head.py
+      - src/mentor_transfer_loss.py
+      - src/ultralytics_patch.py
   workflow_dispatch:
 
 concurrency:
@@ -45,6 +49,7 @@ jobs:
           grep -q 'AdvantageGatedMentorDetect' src/mentor_transfer_head.py
           grep -q 'advantage_gate' src/mentor_transfer_loss.py
           grep -q 'teacher_iou - student_iou' src/mentor_transfer_loss.py
+          grep -q 'isolated YAML' scripts/run_agtl_test.py
           test -f "$MENTOR_PT"
           test "$YOLOEDGE27_MENTOR_PT" = "$MENTOR_PT"
           test -f "$YOLOEDGE27_MENTOR_PT"
