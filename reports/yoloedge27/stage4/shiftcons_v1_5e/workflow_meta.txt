@@ -1,0 +1,13 @@
+branch=research/yoloedge27-shiftcons-v1
+head=265a36119ac61ba4e7d65b98b79a75ae5446ca4e
+screen_root=/home/minh/yoloedge27_experiments/stage4/shiftcons_v1_5e
+student=H1 direct reg1
+new_variant=S1 tiny shift equivariance consistency
+epochs=5
+shift_lambda=0.25
+tiny_threshold_px=16
+shift_px=1
+shift_set=cardinal +/-1 pixel
+inference_change=none
+training_cost=one auxiliary forward per batch
+note=local mechanism screening only
