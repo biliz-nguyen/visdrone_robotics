@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/yoloedge27-pixelstable-assign-v1-5e.yml
       - scripts/run_pixel_stable_assignment_test.py
+      - scripts/sanity.py
       - src/pixel_stable_assigner.py
       - src/ultralytics_patch.py
       - tests/test_pixel_stable_assigner.py
@@ -48,6 +49,7 @@ jobs:
           grep -q 'def pixel_stable_quality' src/pixel_stable_assigner.py
           grep -q 'TinyPixelStableAssigner' src/ultralytics_patch.py
           grep -q 'Criterion assigner:' scripts/run_pixel_stable_assignment_test.py
+          grep -q '"pixel_stable": "TinyPixelStableAssigner"' scripts/sanity.py
           test -f reports/yoloedge27/stage3/head_snr_v1_5e/summary.json
 
       - name: Pre-flight GPU and dataset
