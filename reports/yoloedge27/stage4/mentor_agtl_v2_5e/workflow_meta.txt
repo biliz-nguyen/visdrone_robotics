@@ -1,5 +1,5 @@
 branch=research/yoloedge27-mentor-agtl-v2
-head=9ab2889b487e181592234a0f17c269fe04534148
+head=a6e3778b3a85f2e77b14029768fd834d17a831d0
 screen_root=/home/minh/yoloedge27_experiments/stage4/mentor_agtl_v2_5e
 mentor_pt=/home/minh/yoloedge27_experiments/stage1/edge27_spr_v1_50e/runs/sprdown_reg16_standard_attn-none_50e_seed42/weights/best.pt
 mentor=frozen S1 reg16 50e checkpoint
