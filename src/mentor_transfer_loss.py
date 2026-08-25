@@ -34,6 +34,18 @@ def advantage_gate(
     return mask, advantage.detach()
 
 
+def mentor_transfer_enabled(mentor_lambda: float) -> bool:
+    """Return whether the training-only mentor branch should run.
+
+    Ultralytics validation executes the criterion under ``torch.no_grad()`` and
+    may convert the student/batch to FP16. AGTL is a training-only regularizer,
+    so running the frozen mentor during validation is unnecessary and can create
+    an FP16-input/FP32-weight mismatch. Restricting mentor execution to grad-
+    enabled training keeps validation identical to the H1 inference graph.
+    """
+    return float(mentor_lambda) > 0.0 and torch.is_grad_enabled()
+
+
 class AdvantageGatedTinyLocalizationLoss(v8DetectionLoss):
     """Stock H1 detection loss plus training-only selective mentor transfer.
 
@@ -78,8 +90,11 @@ class AdvantageGatedTinyLocalizationLoss(v8DetectionLoss):
         if self._mentor_model is None:
             from ultralytics import YOLO
 
+            # Keep the frozen mentor parameters in FP32. During AMP training,
+            # autocast may use lower-precision kernels automatically; outside
+            # autocast we explicitly cast the input to the mentor dtype below.
             wrapper = YOLO(self.mentor_path)
-            mentor = wrapper.model.to(device).eval()
+            mentor = wrapper.model.to(device).float().eval()
             for p in mentor.parameters():
                 p.requires_grad_(False)
 
@@ -176,57 +191,67 @@ class AdvantageGatedTinyLocalizationLoss(v8DetectionLoss):
                 stride_tensor,
             )
 
-            mentor = self._ensure_mentor(self.device)
-            with torch.no_grad():
-                mentor_out = mentor(batch["img"].to(self.device, non_blocking=True))
-                mentor_preds = self._raw_predictions(mentor_out)
+            # AGTL is intentionally training-only. The validator runs this loss
+            # under torch.no_grad(), so it should report the ordinary H1 loss and
+            # never execute the mentor branch.
+            if mentor_transfer_enabled(self.mentor_lambda):
+                mentor = self._ensure_mentor(self.device)
+                mentor_dtype = next(mentor.parameters()).dtype
+                mentor_img = batch["img"].to(
+                    self.device,
+                    dtype=mentor_dtype,
+                    non_blocking=True,
+                )
+                with torch.no_grad():
+                    mentor_out = mentor(mentor_img)
+                    mentor_preds = self._raw_predictions(mentor_out)
 
-            student_shapes = [(int(f.shape[-2]), int(f.shape[-1])) for f in preds["feats"]]
-            mentor_shapes = [(int(f.shape[-2]), int(f.shape[-1])) for f in mentor_preds["feats"]]
-            if mentor_shapes != student_shapes:
-                raise ValueError(f"Mentor/student feature grids differ: {mentor_shapes} vs {student_shapes}")
+                student_shapes = [(int(f.shape[-2]), int(f.shape[-1])) for f in preds["feats"]]
+                mentor_shapes = [(int(f.shape[-2]), int(f.shape[-1])) for f in mentor_preds["feats"]]
+                if mentor_shapes != student_shapes:
+                    raise ValueError(f"Mentor/student feature grids differ: {mentor_shapes} vs {student_shapes}")
 
-            mentor_bboxes = self._decode_mentor(mentor_preds, anchor_points).detach()
-            target_bboxes_feat = target_bboxes / stride_tensor
+                mentor_bboxes = self._decode_mentor(mentor_preds, anchor_points).detach()
+                target_bboxes_feat = target_bboxes / stride_tensor
 
-            student_pos = pred_bboxes[fg_mask]
-            mentor_pos = mentor_bboxes[fg_mask]
-            target_pos = target_bboxes_feat[fg_mask]
+                student_pos = pred_bboxes[fg_mask]
+                mentor_pos = mentor_bboxes[fg_mask]
+                target_pos = target_bboxes_feat[fg_mask]
 
-            student_iou = bbox_iou(
-                student_pos.detach(), target_pos, xywh=False, CIoU=False
-            ).reshape(-1).clamp_(0.0, 1.0)
-            teacher_iou = bbox_iou(
-                mentor_pos, target_pos, xywh=False, CIoU=False
-            ).reshape(-1).clamp_(0.0, 1.0)
+                student_iou = bbox_iou(
+                    student_pos.detach(), target_pos, xywh=False, CIoU=False
+                ).reshape(-1).clamp_(0.0, 1.0)
+                teacher_iou = bbox_iou(
+                    mentor_pos, target_pos, xywh=False, CIoU=False
+                ).reshape(-1).clamp_(0.0, 1.0)
 
-            target_px = target_bboxes[fg_mask]
-            width_px = (target_px[:, 2] - target_px[:, 0]).clamp_min(0.0)
-            height_px = (target_px[:, 3] - target_px[:, 1]).clamp_min(0.0)
-            min_side_px = torch.minimum(width_px, height_px).detach()
+                target_px = target_bboxes[fg_mask]
+                width_px = (target_px[:, 2] - target_px[:, 0]).clamp_min(0.0)
+                height_px = (target_px[:, 3] - target_px[:, 1]).clamp_min(0.0)
+                min_side_px = torch.minimum(width_px, height_px).detach()
 
-            gate, advantage = advantage_gate(
-                student_iou,
-                teacher_iou,
-                min_side_px,
-                tiny_threshold=self.tiny_threshold,
-                advantage_margin=self.advantage_margin,
-                min_teacher_iou=self.min_teacher_iou,
-            )
+                gate, advantage = advantage_gate(
+                    student_iou,
+                    teacher_iou,
+                    min_side_px,
+                    tiny_threshold=self.tiny_threshold,
+                    advantage_margin=self.advantage_margin,
+                    min_teacher_iou=self.min_teacher_iou,
+                )
 
-            if gate.any():
-                mentor_ciou = bbox_iou(
-                    student_pos[gate],
-                    mentor_pos[gate],
-                    xywh=False,
-                    CIoU=True,
-                ).reshape(-1)
-                tal_weight = target_scores.sum(-1)[fg_mask][gate].detach()
-                mentor_term = (
-                    (1.0 - mentor_ciou)
-                    * tal_weight
-                    * advantage[gate]
-                ).sum() / target_scores_sum
+                if gate.any():
+                    mentor_ciou = bbox_iou(
+                        student_pos[gate],
+                        mentor_pos[gate],
+                        xywh=False,
+                        CIoU=True,
+                    ).reshape(-1)
+                    tal_weight = target_scores.sum(-1)[fg_mask][gate].detach()
+                    mentor_term = (
+                        (1.0 - mentor_ciou)
+                        * tal_weight
+                        * advantage[gate]
+                    ).sum() / target_scores_sum
 
         # Stock scaling, followed by an independently weighted training-only
         # localization mentor term. This keeps mentor_lambda interpretable.
