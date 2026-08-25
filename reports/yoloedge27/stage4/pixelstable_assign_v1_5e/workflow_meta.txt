@@ -1,5 +1,5 @@
 branch=research/yoloedge27-pixelstable-assign-v1
-head=20ad4a65b07357b018789664320a487d81299d48
+head=e70a3aa7839f2d28fc06c9b7773a02fd84c0d740
 screen_root=/home/minh/yoloedge27_experiments/stage4/pixelstable_assign_v1_5e
 student=H1 direct reg1
 variant=P1 pixel-stable tiny assignment

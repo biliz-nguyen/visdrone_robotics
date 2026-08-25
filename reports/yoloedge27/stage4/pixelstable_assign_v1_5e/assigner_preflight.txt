@@ -1,0 +1,10 @@
+HEAD is now at 9a414a82 Fix QNN export with built-in provider wheels (#24618)
+INFO: batch != nbs. Ultralytics will use gradient accumulation so the nominal batch remains nbs.
+Official VisDrone -> YOLO cache: /home/minh/Desktop/project/visdrone_local_project/dataset/.visdrone_yolo
+  train: images=6471 objects=343202 ignored=10345 duplicates_removed=3
+  val: images=548 objects=38759 ignored=1410 duplicates_removed=0
+  test: images=1610 objects=75102 ignored=2445 duplicates_removed=0
+WARNING ⚠️ no model scale passed. Assuming scale='n'.
+Criterion assigner: TinyPixelStableAssigner
+tiny_min_side: 16.0
+perturb_px: 1.0
