@@ -98,6 +98,22 @@ def patch_model_yaml(path: Path, args) -> None:
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
+def assert_agtl_student(student) -> None:
+    detect = student.model.model[-1]
+    if detect.__class__.__name__ != "AdvantageGatedMentorDetect":
+        raise RuntimeError(
+            f"AGTL student head was replaced before training: {detect.__class__.__name__}"
+        )
+    assert int(detect.reg_max) == 1
+    assert [int(x) for x in detect.stride.tolist()] == [4, 8, 16]
+    criterion = student.model.init_criterion()
+    if criterion.__class__.__name__ != "AdvantageGatedTinyLocalizationLoss":
+        raise RuntimeError(
+            f"AGTL criterion was replaced before training: {criterion.__class__.__name__}"
+        )
+    del criterion
+
+
 def model_complexity(model, imgsz: int) -> dict[str, float | int | None]:
     import torch
 
@@ -179,15 +195,21 @@ def main() -> int:
     env = os.environ.copy()
     env["PYTHONPATH"] = f"{ROOT / 'third_party' / 'ultralytics'}:{ROOT}"
     env["YOLOEDGE27_MENTOR_PT"] = str(mentor)
+    os.environ["YOLOEDGE27_MENTOR_PT"] = str(mentor)
 
     try:
         EXPERIMENT.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
 
         from src.runtime import prepare_runtime
 
-        resolved, data_yaml, model_yaml = prepare_runtime()
-        patch_model_yaml(model_yaml, args)
-        shutil.copy2(model_yaml, report_dir / "model_agtl_v1.yaml")
+        resolved, data_yaml, generated_model_yaml = prepare_runtime()
+        patch_model_yaml(generated_model_yaml, args)
+
+        # Keep the AGTL YAML outside generated/. Other helper subprocesses call
+        # prepare_runtime() and can regenerate generated/model_*.yaml as the H1
+        # control. Using an isolated copy prevents that silent overwrite.
+        agtl_model_yaml = report_dir / "model_agtl_v1.yaml"
+        shutil.copy2(generated_model_yaml, agtl_model_yaml)
 
         import torch
         from ultralytics import YOLO
@@ -195,11 +217,8 @@ def main() -> int:
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA is required for the AGTL screen")
 
-        student = YOLO(str(model_yaml))
-        detect = student.model.model[-1]
-        assert detect.__class__.__name__ == "AdvantageGatedMentorDetect"
-        assert int(detect.reg_max) == 1
-        assert [int(x) for x in detect.stride.tolist()] == [4, 8, 16]
+        student = YOLO(str(agtl_model_yaml))
+        assert_agtl_student(student)
 
         complexity = model_complexity(student, int(resolved["train"]["imgsz"]))
         h1_complexity = controls["H1"]["complexity"]
@@ -208,15 +227,13 @@ def main() -> int:
         if complexity["gflops"] is not None and abs(float(complexity["gflops"]) - float(h1_complexity["gflops"])) > 1e-3:
             raise RuntimeError(f"AGTL student GFLOPs differ from H1: {complexity} vs {h1_complexity}")
 
-        student.model.cuda().eval()
-        criterion = student.model.init_criterion()
-        assert criterion.__class__.__name__ == "AdvantageGatedTinyLocalizationLoss"
-        del criterion
-        student.model.cpu()
+        del student
         gc.collect()
         torch.cuda.empty_cache()
 
-        # Record the actual frozen mentor's screening metrics before training.
+        # Record the actual frozen mentor's screening metrics. This subprocess
+        # may regenerate the ordinary H1 YAML, but it cannot touch the isolated
+        # AGTL YAML above.
         mentor_eval_path = report_dir / "mentor_eval.json"
         run_live(
             [sys.executable, "scripts/eval_screening.py", "--weights", str(mentor), "--output", str(mentor_eval_path)],
@@ -229,8 +246,14 @@ def main() -> int:
             f"a{args.advantage_margin:g}_reg1_{args.epochs}e_seed{resolved['seed']}"
         )
 
-        # Re-create on CUDA after the CPU THOP pass.
-        student = YOLO(str(model_yaml))
+        # Re-create from the isolated YAML and verify again immediately before
+        # handing the model to the Ultralytics trainer. This makes a silent H1
+        # fallback a hard failure instead of producing a false AGTL result.
+        student = YOLO(str(agtl_model_yaml))
+        assert_agtl_student(student)
+        print("AGTL pre-train head:", student.model.model[-1].__class__.__name__)
+        print("AGTL pre-train YAML:", agtl_model_yaml)
+
         student.train(
             data=str(data_yaml),
             imgsz=int(t["imgsz"]),
@@ -358,7 +381,7 @@ def main() -> int:
         }
         (report_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
         (report_dir / "paths.txt").write_text(
-            f"mentor_pt={mentor}\nbest_pt={best}\nresults_csv={results}\ncontrol_summary={CONTROL_SUMMARY}\n",
+            f"mentor_pt={mentor}\nbest_pt={best}\nresults_csv={results}\ncontrol_summary={CONTROL_SUMMARY}\nagtl_model_yaml={agtl_model_yaml}\n",
             encoding="utf-8",
         )
         print(json.dumps(summary, indent=2))
