@@ -5,7 +5,7 @@ import torch
 from ultralytics.nn.modules.head import Detect
 
 from src.mentor_transfer_head import AdvantageGatedMentorDetect
-from src.mentor_transfer_loss import advantage_gate
+from src.mentor_transfer_loss import advantage_gate, mentor_transfer_enabled
 
 
 def _nparams(module) -> int:
@@ -51,6 +51,14 @@ def test_advantage_gate_selects_only_tiny_teacher_better_samples():
     # 4: teacher IoU below minimum-quality guard -> rejected.
     assert mask.tolist() == [True, False, False, True, False]
     assert torch.allclose(advantage, torch.tensor([0.15, 0.0, 0.25, 0.15, 0.0]), atol=1e-7)
+
+
+def test_mentor_transfer_is_training_only():
+    assert torch.is_grad_enabled()
+    assert mentor_transfer_enabled(0.25)
+    assert not mentor_transfer_enabled(0.0)
+    with torch.no_grad():
+        assert not mentor_transfer_enabled(0.25)
 
 
 def test_head_metadata_validation():
