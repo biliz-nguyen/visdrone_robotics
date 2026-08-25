@@ -1,0 +1,4 @@
+best_pt=/home/minh/yoloedge27_experiments/stage4/shiftcons_v1_5e/runs/spr-p4p5_shiftcons-l0.25-tiny16-px1_reg1_5e_seed42/weights/best.pt
+results_csv=/home/minh/yoloedge27_experiments/stage4/shiftcons_v1_5e/runs/spr-p4p5_shiftcons-l0.25-tiny16-px1_reg1_5e_seed42/results.csv
+control_summary=/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage3/head_snr_v1_5e/summary.json
+shift_model_yaml=/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage4/shiftcons_v1_5e/model_shiftcons_v1.yaml

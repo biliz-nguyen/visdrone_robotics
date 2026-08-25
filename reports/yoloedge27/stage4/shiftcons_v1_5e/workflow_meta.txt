@@ -1,5 +1,5 @@
 branch=research/yoloedge27-shiftcons-v1
-head=265a36119ac61ba4e7d65b98b79a75ae5446ca4e
+head=2f285cd1350fd393fa672946a1a73c5262db46c6
 screen_root=/home/minh/yoloedge27_experiments/stage4/shiftcons_v1_5e
 student=H1 direct reg1
 new_variant=S1 tiny shift equivariance consistency

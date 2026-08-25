@@ -1,0 +1,227 @@
+{
+  "purpose": "Tiny shift-equivariance local 5e mechanism screen; not final paper evidence.",
+  "novelty_status": "working hypothesis only; translation equivariance and anti-aliasing are established topics, exact tiny object-level paired-box regularizer not claimed novel",
+  "student": "H1: S1 SPR P4->P5 + stock-width DFL-free Detect reg_max=1",
+  "mechanism": {
+    "name": "Tiny Shift Equivariance Consistency (TSEC) v1",
+    "shift_lambda": 0.25,
+    "tiny_threshold_px": 16.0,
+    "shift_px": 1,
+    "shift_set": [
+      "(+1,0)",
+      "(-1,0)",
+      "(0,+1)",
+      "(0,-1)"
+    ],
+    "pairing": "same GT object across base and one-pixel shifted views; one highest-TAL-score representative per object per view",
+    "reliability": "detached geometric mean of base/shift IoU-to-GT",
+    "consistency": "CIoU(base box, inverse-shifted auxiliary-view box)",
+    "base_assignment": "standard TAL unchanged",
+    "base_losses": "standard BCE + CIoU + direct-regression unchanged",
+    "training_cost": "one auxiliary forward per training batch; BN running statistics frozen for auxiliary pass",
+    "inference_change": "none",
+    "extra_prediction_channels": 0
+  },
+  "protocol": {
+    "epochs": 5,
+    "batch": 8,
+    "nbs": 16,
+    "imgsz": 640,
+    "seed": 42,
+    "pretrained_student": false
+  },
+  "controls": {
+    "H0": {
+      "id": "H0",
+      "preset": "edge27_spr_p4p5",
+      "description": "REUSED existing S1: SPR P4->P5 + stock Detect reg_max=16",
+      "status": "reused_existing",
+      "rerun": false,
+      "complexity": {
+        "params": 1736638,
+        "gflops": 9.9122
+      },
+      "epoch5": {
+        "precision": 0.24109,
+        "recall": 0.19443,
+        "map50": 0.14213,
+        "map50_95": 0.07379
+      },
+      "best_eval": {
+        "precision": 0.24151772295054963,
+        "recall": 0.1947574970672591,
+        "map50": 0.14290891413848147,
+        "map50_95": 0.07412907581209939
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.17224715050248374,
+          "recall": 0.31094527363184077,
+          "map50": 0.14414284104116837,
+          "map50_95": 0.05106804110233591
+        },
+        "people": {
+          "precision": 0.4097181898089238,
+          "recall": 0.13177860499869562,
+          "map50": 0.1332432397945635,
+          "map50_95": 0.03979999138819667
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.1585121551155959,
+        "inference": 1.5381940602575896,
+        "loss": 0.00043448722119575675,
+        "postprocess": 2.6878321386770057
+      },
+      "source_results": "/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage1/spr_placement_v1_5e/s1/results.csv",
+      "source_eval": "/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage1/spr_placement_v1_5e/s1/best_eval.json",
+      "delta_best_eval_vs_h0": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "map50": 0.0,
+        "map50_95": 0.0
+      }
+    },
+    "H1": {
+      "id": "H1",
+      "preset": "edge27_head_direct_r1",
+      "description": "stock Detect, global reg_max=1 / DFL-free control",
+      "status": "complete",
+      "rerun": true,
+      "complexity": {
+        "params": 1523322,
+        "gflops": 6.0501
+      },
+      "epoch5": {
+        "precision": 0.32298,
+        "recall": 0.19148,
+        "map50": 0.13678,
+        "map50_95": 0.06809
+      },
+      "best_eval": {
+        "precision": 0.3234986123515966,
+        "recall": 0.19125586123160976,
+        "map50": 0.13716525111748543,
+        "map50_95": 0.06838695464011774
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.1324230280495622,
+          "recall": 0.34294436906377207,
+          "map50": 0.1392833605031132,
+          "map50_95": 0.046377298980455714
+        },
+        "people": {
+          "precision": 0.3781135511941139,
+          "recall": 0.13482926829268294,
+          "map50": 0.11461462041310316,
+          "map50_95": 0.033674010065047555
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.16372997629498498,
+        "inference": 1.1806755857740254,
+        "loss": 0.00043318246806297033,
+        "postprocess": 2.598589987196215
+      },
+      "onnx_export": {
+        "ok": true
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage3/head_snr_v1_5e/h1_edge27_head_direct_r1/runs/spr-p4p5_direct-r1_standard_attn-none_5e_seed42/weights/best.pt",
+      "delta_best_eval_vs_h0": {
+        "precision": 0.08198088940104697,
+        "recall": -0.0035016358356493305,
+        "map50": -0.005743663020996048,
+        "map50_95": -0.005742121171981654
+      }
+    }
+  },
+  "S1": {
+    "id": "S1",
+    "description": "H1 DFL-free student + Tiny Shift Equivariance Consistency",
+    "status": "complete",
+    "complexity": {
+      "params": 1523322,
+      "gflops": 6.0500992
+    },
+    "epoch5": {
+      "precision": 0.40792,
+      "recall": 0.18666,
+      "map50": 0.13634,
+      "map50_95": 0.06824
+    },
+    "best_eval": {
+      "precision": 0.40841251124279465,
+      "recall": 0.1868424290440443,
+      "map50": 0.13733361255170654,
+      "map50_95": 0.06849964081099676
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.15422775876621492,
+        "recall": 0.28991406603346903,
+        "map50": 0.12140662766634264,
+        "map50_95": 0.03977902878585733
+      },
+      "people": {
+        "precision": 0.345263870226414,
+        "recall": 0.12861778278725441,
+        "map50": 0.10763198062731391,
+        "map50_95": 0.032057886505527246
+      }
+    },
+    "speed_ms_best_eval": {
+      "preprocess": 0.15549534853157407,
+      "inference": 1.173882014594989,
+      "loss": 0.0005418558357367173,
+      "postprocess": 3.3972729215266373
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage4/shiftcons_v1_5e/runs/spr-p4p5_shiftcons-l0.25-tiny16-px1_reg1_5e_seed42/weights/best.pt",
+    "delta_best_eval_vs_h0": {
+      "precision": 0.16689478829224502,
+      "recall": -0.007915068023214789,
+      "map50": -0.005575301586774939,
+      "map50_95": -0.005629435001102634
+    },
+    "delta_focus_vs_h0": {
+      "pedestrian": {
+        "precision": -0.01801939173626882,
+        "recall": -0.021031207598371737,
+        "map50": -0.02273621337482573,
+        "map50_95": -0.01128901231647858
+      },
+      "people": {
+        "precision": -0.0644543195825098,
+        "recall": -0.0031608222114412055,
+        "map50": -0.0256112591672496,
+        "map50_95": -0.007742104882669423
+      }
+    },
+    "delta_best_eval_vs_h1": {
+      "precision": 0.08491389889119805,
+      "recall": -0.004413432187565458,
+      "map50": 0.00016836143422110927,
+      "map50_95": 0.00011268617087902
+    },
+    "delta_focus_vs_h1": {
+      "pedestrian": {
+        "precision": 0.021804730716652704,
+        "recall": -0.05303030303030304,
+        "map50": -0.017876732836770576,
+        "map50_95": -0.006598270194598382
+      },
+      "people": {
+        "precision": -0.03284968096769986,
+        "recall": -0.006211485505428521,
+        "map50": -0.006982639785789252,
+        "map50_95": -0.0016161235595203091
+      }
+    }
+  },
+  "decision_rule": "Keep only if S1 improves H1 aggregate and does not materially damage pedestrian/people; otherwise reject without parameter fishing.",
+  "caution": "single local seed and 5 epochs; auxiliary-view training cost is higher even though deployment graph is identical to H1."
+}
