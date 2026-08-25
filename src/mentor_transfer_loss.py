@@ -19,12 +19,7 @@ def advantage_gate(
     advantage_margin: float,
     min_teacher_iou: float,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Return the AGTL v1 tiny-object candidate gate and teacher advantage.
-
-    A positive location becomes an eligible mentor candidate only when its
-    assigned GT is tiny and the frozen teacher localizes that same GT better
-    than the current student by more than the configured margin.
-    """
+    """Return the tiny-object mentor candidate gate and detached teacher advantage."""
     advantage = (teacher_iou - student_iou - float(advantage_margin)).clamp_min(0.0)
     mask = (
         (min_side_px < float(tiny_threshold))
@@ -34,100 +29,94 @@ def advantage_gate(
     return mask, advantage.detach()
 
 
-def object_balanced_gate(
+def object_normalized_weights(
     candidate_gate: torch.Tensor,
     advantage: torch.Tensor,
+    tal_weight: torch.Tensor,
     positive_batch_idx: torch.Tensor,
     positive_gt_idx: torch.Tensor,
 ) -> torch.Tensor:
-    """Keep at most one mentor location for each GT object.
+    """Distribute one object-level mentor budget across all eligible positives.
 
-    Dense TAL assignment can create several positive locations for one object.
-    AGTL v2 makes the mentor signal object-balanced by selecting only the
-    eligible positive with the largest detached teacher advantage for every
-    (image, assigned-GT) pair. Stable sorting makes exact ties deterministic:
-    the first positive in the original positive ordering wins.
+    AGTL v3 keeps every eligible positive from v1, but removes the dependence of
+    total mentor pressure on the number of TAL positives assigned to an object.
 
-    This helper changes only *which* eligible positives receive mentor transfer;
-    AGTL v1 thresholds, loss weighting, normalization, and lambda stay intact.
+    For each (image, assigned-GT) object:
+      * raw per-positive weight = TAL weight * teacher advantage;
+      * choose the v2 reference location with maximum teacher advantage;
+      * define the object's total mentor budget as that reference raw weight;
+      * redistribute that budget over all eligible positives in proportion to
+        their raw weights.
+
+    Therefore the sum of returned weights for one object equals the mentor
+    weight that AGTL v2 would have assigned to its single selected location,
+    while the localization signal is still spread over all useful positives.
     """
-    if candidate_gate.ndim != 1 or advantage.ndim != 1:
-        raise ValueError("candidate_gate and advantage must be 1-D positive-location tensors")
-    if positive_batch_idx.ndim != 1 or positive_gt_idx.ndim != 1:
-        raise ValueError("positive batch/GT indices must be 1-D")
+    tensors = (candidate_gate, advantage, tal_weight, positive_batch_idx, positive_gt_idx)
+    if any(t.ndim != 1 for t in tensors):
+        raise ValueError("object-normalized AGTL inputs must be 1-D")
     n = candidate_gate.numel()
-    if not (advantage.numel() == positive_batch_idx.numel() == positive_gt_idx.numel() == n):
-        raise ValueError("object-balanced AGTL inputs must have equal lengths")
+    if any(t.numel() != n for t in tensors[1:]):
+        raise ValueError("object-normalized AGTL inputs must have equal lengths")
 
-    selected = torch.zeros_like(candidate_gate, dtype=torch.bool)
+    weights = torch.zeros_like(advantage)
     eligible_idx = torch.nonzero(candidate_gate, as_tuple=False).flatten()
     if eligible_idx.numel() == 0:
-        return selected
+        return weights
 
     batch_idx = positive_batch_idx.to(device=advantage.device, dtype=torch.long)
     gt_idx = positive_gt_idx.to(device=advantage.device, dtype=torch.long)
     if torch.any(batch_idx < 0) or torch.any(gt_idx < 0):
         raise ValueError("positive batch/GT indices must be non-negative")
 
-    # A global stride larger than every local GT index makes (batch, GT) keys
-    # unique across the batch while keeping this operation fully tensorized.
     gt_stride = int(gt_idx.max().item()) + 1
     object_key = batch_idx * max(gt_stride, 1) + gt_idx
+    eligible_key = object_key[eligible_idx]
+    raw = (tal_weight.detach() * advantage.detach()).clamp_min(0.0)
 
-    # First rank candidates by advantage descending. Then stable-sort by object
-    # key so the highest-advantage location stays first within each object.
-    by_advantage = torch.argsort(
-        advantage[eligible_idx], descending=True, stable=True
-    )
-    ranked_idx = eligible_idx[by_advantage]
-    by_object = torch.argsort(object_key[ranked_idx], stable=True)
-    ranked_idx = ranked_idx[by_object]
-    ranked_key = object_key[ranked_idx]
+    # Process unique object ids. The number of objects per training image is much
+    # smaller than the number of dense positive locations, and this loop keeps
+    # the reference rule explicit and deterministic.
+    for key in torch.unique(eligible_key):
+        local = eligible_idx[eligible_key == key]
+        local_adv = advantage[local]
+        # torch.argmax returns the first maximum, matching v2's deterministic
+        # tie behaviour for its maximum-advantage reference location.
+        ref = local[torch.argmax(local_adv)]
+        object_budget = raw[ref]
+        raw_sum = raw[local].sum()
+        if raw_sum > 0:
+            weights[local] = raw[local] / raw_sum * object_budget
 
-    first_for_object = torch.ones_like(ranked_key, dtype=torch.bool)
-    if ranked_key.numel() > 1:
-        first_for_object[1:] = ranked_key[1:] != ranked_key[:-1]
-    selected[ranked_idx[first_for_object]] = True
-    return selected
+    return weights.detach()
 
 
 def mentor_transfer_enabled(mentor_lambda: float) -> bool:
-    """Return whether the training-only mentor branch should run.
-
-    Ultralytics validation executes the criterion under ``torch.no_grad()`` and
-    may convert the student/batch to FP16. AGTL is a training-only regularizer,
-    so running the frozen mentor during validation is unnecessary and can create
-    an FP16-input/FP32-weight mismatch. Restricting mentor execution to grad-
-    enabled training keeps validation identical to the H1 inference graph.
-    """
+    """Run the frozen mentor only during gradient-enabled training."""
     return float(mentor_lambda) > 0.0 and torch.is_grad_enabled()
 
 
 class AdvantageGatedTinyLocalizationLoss(v8DetectionLoss):
-    """Stock H1 loss plus object-balanced tiny localization mentor transfer.
+    """Stock H1 loss plus object-normalized tiny localization mentor transfer.
 
-    AGTL v2 keeps the v1 capacity bridge: the richer mentor regression output
-    (for example DFL16) is decoded to continuous boxes before transfer, so the
-    reg_max=1 student never mimics mentor bins, features, or logits.
+    AGTL v3 keeps the original capacity bridge: a richer mentor regression
+    representation (e.g. DFL16) is decoded to continuous boxes before transfer,
+    so the reg_max=1 student never mimics mentor bins, features, or logits.
 
-    For each student-assigned positive location:
-      1) compare student and frozen-mentor IoU to the same assigned GT;
-      2) keep only tiny GTs where mentor IoU exceeds student IoU by a margin;
-      3) group eligible locations by (image, assigned GT) and retain only the
-         largest teacher-advantage location for each object;
-      4) pull that student box toward the detached mentor box with CIoU,
-         using the same TAL weight, advantage weight, normalization, and lambda
-         as AGTL v1.
+    Relative to the earlier variants:
+      * v1 transfers every eligible positive independently;
+      * v2 keeps only one maximum-advantage positive per object;
+      * v3 keeps all eligible positives but normalizes their combined mentor
+        budget per object to the single-location budget used by v2.
 
-    The mentor is loaded lazily from YOLOEDGE27_MENTOR_PT and is never part of
-    the exported student graph.
+    The mentor is training-only and is never part of the exported student graph.
     """
 
     def __init__(self, model: torch.nn.Module, tal_topk: int = 10, tal_topk2: int | None = None):
         super().__init__(model, tal_topk=tal_topk, tal_topk2=tal_topk2)
         head = model.model[-1]
         if self.reg_max != 1:
-            raise ValueError("AGTL v2 is locked to the DFL-free reg_max=1 student")
+            raise ValueError("AGTL v3 is locked to the DFL-free reg_max=1 student")
 
         self.mentor_lambda = float(head.mentor_lambda)
         self.tiny_threshold = float(head.tiny_threshold)
@@ -149,9 +138,6 @@ class AdvantageGatedTinyLocalizationLoss(v8DetectionLoss):
         if self._mentor_model is None:
             from ultralytics import YOLO
 
-            # Keep frozen mentor parameters in FP32. During AMP training,
-            # autocast can choose lower-precision kernels; outside autocast we
-            # explicitly cast the input to the mentor dtype below.
             wrapper = YOLO(self.mentor_path)
             mentor = wrapper.model.to(device).float().eval()
             for p in mentor.parameters():
@@ -167,15 +153,8 @@ class AdvantageGatedTinyLocalizationLoss(v8DetectionLoss):
 
             self._mentor_model = mentor
             self._mentor_reg_max = int(mentor_head.reg_max)
-            self._mentor_proj = torch.arange(
-                self._mentor_reg_max, dtype=torch.float, device=device
-            )
-            print(
-                "AGTL v2 mentor loaded:",
-                self.mentor_path,
-                "reg_max=",
-                self._mentor_reg_max,
-            )
+            self._mentor_proj = torch.arange(self._mentor_reg_max, dtype=torch.float, device=device)
+            print("AGTL v3 mentor loaded:", self.mentor_path, "reg_max=", self._mentor_reg_max)
         return self._mentor_model
 
     @staticmethod
@@ -202,7 +181,6 @@ class AdvantageGatedTinyLocalizationLoss(v8DetectionLoss):
         return dist2bbox(pred_dist, anchor_points, xywh=False)
 
     def get_assigned_targets_and_loss(self, preds: dict[str, torch.Tensor], batch: dict[str, Any]) -> tuple:
-        # Reproduce the stock loss exactly up to the extra mentor term.
         loss = torch.zeros(3, device=self.device)
         pred_distri, pred_scores = (
             preds["boxes"].permute(0, 2, 1).contiguous(),
@@ -250,17 +228,10 @@ class AdvantageGatedTinyLocalizationLoss(v8DetectionLoss):
                 stride_tensor,
             )
 
-            # AGTL is intentionally training-only. The validator runs this loss
-            # under torch.no_grad(), so it reports ordinary H1 loss and never
-            # executes the frozen mentor branch.
             if mentor_transfer_enabled(self.mentor_lambda):
                 mentor = self._ensure_mentor(self.device)
                 mentor_dtype = next(mentor.parameters()).dtype
-                mentor_img = batch["img"].to(
-                    self.device,
-                    dtype=mentor_dtype,
-                    non_blocking=True,
-                )
+                mentor_img = batch["img"].to(self.device, dtype=mentor_dtype, non_blocking=True)
                 with torch.no_grad():
                     mentor_out = mentor(mentor_img)
                     mentor_preds = self._raw_predictions(mentor_out)
@@ -298,18 +269,18 @@ class AdvantageGatedTinyLocalizationLoss(v8DetectionLoss):
                     min_teacher_iou=self.min_teacher_iou,
                 )
 
-                # Positive tensors above follow the same flattened ordering as
-                # fg_mask.nonzero(). Use batch + assigned-GT identity to make the
-                # mentor signal object-balanced across dense TAL positives.
                 positive_locations = torch.nonzero(fg_mask, as_tuple=False)
                 positive_batch_idx = positive_locations[:, 0]
                 positive_gt_idx = target_gt_idx[fg_mask]
-                gate = object_balanced_gate(
+                tal_weight_all = target_scores.sum(-1)[fg_mask].detach()
+                mentor_weight = object_normalized_weights(
                     candidate_gate,
                     advantage,
+                    tal_weight_all,
                     positive_batch_idx,
                     positive_gt_idx,
                 )
+                gate = mentor_weight > 0
 
                 if gate.any():
                     mentor_ciou = bbox_iou(
@@ -318,16 +289,10 @@ class AdvantageGatedTinyLocalizationLoss(v8DetectionLoss):
                         xywh=False,
                         CIoU=True,
                     ).reshape(-1)
-                    tal_weight = target_scores.sum(-1)[fg_mask][gate].detach()
                     mentor_term = (
-                        (1.0 - mentor_ciou)
-                        * tal_weight
-                        * advantage[gate]
+                        (1.0 - mentor_ciou) * mentor_weight[gate]
                     ).sum() / target_scores_sum
 
-        # Stock scaling, followed by the independently weighted training-only
-        # localization mentor term. Lambda and normalization are unchanged from
-        # AGTL v1 so the v2 screen isolates object-balanced selection.
         loss[0] *= self.hyp.box
         loss[1] *= self.hyp.cls
         loss[2] *= self.hyp.dfl

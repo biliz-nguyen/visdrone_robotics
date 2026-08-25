@@ -8,7 +8,7 @@ from src.mentor_transfer_head import AdvantageGatedMentorDetect
 from src.mentor_transfer_loss import (
     advantage_gate,
     mentor_transfer_enabled,
-    object_balanced_gate,
+    object_normalized_weights,
 )
 
 
@@ -47,42 +47,45 @@ def test_advantage_gate_selects_only_tiny_teacher_better_samples():
         advantage_margin=0.05,
         min_teacher_iou=0.10,
     )
-
-    # 0: tiny and mentor is better by 0.20 -> eligible.
-    # 1: improvement is only 0.03 -> rejected by advantage margin.
-    # 2: mentor is better but GT is not tiny -> rejected.
-    # 3: tiny and mentor is better by 0.20 -> eligible.
-    # 4: teacher IoU below minimum-quality guard -> rejected.
     assert mask.tolist() == [True, False, False, True, False]
     assert torch.allclose(advantage, torch.tensor([0.15, 0.0, 0.25, 0.15, 0.0]), atol=1e-7)
 
 
-def test_object_balanced_gate_keeps_one_best_positive_per_gt():
-    # Seven positive locations from two images. Several locations map to the
-    # same assigned GT, which is exactly the dense-TAL case AGTL v2 targets.
-    candidate = torch.tensor([True, True, True, False, True, True, True])
-    advantage = torch.tensor([0.10, 0.30, 0.20, 0.50, 0.40, 0.40, 0.05])
-    batch_idx = torch.tensor([0, 0, 0, 0, 1, 1, 1])
-    gt_idx = torch.tensor([0, 0, 1, 1, 0, 0, 1])
+def test_object_normalized_weights_preserve_v2_object_budget_but_keep_all_candidates():
+    # image0/gt0 has three eligible positives. The maximum-advantage reference
+    # is idx0, whose raw v2 mentor weight is 0.20 * 1.00 = 0.20.
+    candidate = torch.tensor([True, True, True, False, True, True])
+    advantage = torch.tensor([0.20, 0.10, 0.05, 0.30, 0.40, 0.20])
+    tal = torch.tensor([1.00, 0.50, 2.00, 1.00, 0.50, 1.00])
+    batch_idx = torch.tensor([0, 0, 0, 0, 1, 1])
+    gt_idx = torch.tensor([0, 0, 0, 1, 0, 0])
 
-    selected = object_balanced_gate(candidate, advantage, batch_idx, gt_idx)
+    weights = object_normalized_weights(candidate, advantage, tal, batch_idx, gt_idx)
 
-    # image0/gt0 -> idx1 wins (0.30 > 0.10)
-    # image0/gt1 -> idx2 wins because idx3 is not eligible
-    # image1/gt0 -> idx4 wins exact tie deterministically (first occurrence)
-    # image1/gt1 -> idx6 is the only candidate
-    assert selected.tolist() == [False, True, True, False, True, False, True]
+    # object image0/gt0 raw weights: [0.20, 0.05, 0.10], sum=0.35.
+    # v2 reference budget is 0.20, spread proportionally over all three.
+    expected0 = torch.tensor([0.20, 0.05, 0.10]) / 0.35 * 0.20
+    assert torch.allclose(weights[:3], expected0, atol=1e-7)
+    assert torch.isclose(weights[:3].sum(), torch.tensor(0.20), atol=1e-7)
+
+    # idx3 is not eligible and must remain zero.
+    assert weights[3].item() == 0.0
+
+    # object image1/gt0: max advantage is idx4, v2 budget=0.40*0.50=0.20.
+    assert weights[4] > 0 and weights[5] > 0
+    assert torch.isclose(weights[4:6].sum(), torch.tensor(0.20), atol=1e-7)
 
 
-def test_object_balanced_gate_empty_candidates():
+def test_object_normalized_weights_empty_candidates():
     candidate = torch.zeros(4, dtype=torch.bool)
-    selected = object_balanced_gate(
+    weights = object_normalized_weights(
         candidate,
         torch.tensor([0.1, 0.2, 0.3, 0.4]),
+        torch.ones(4),
         torch.tensor([0, 0, 1, 1]),
         torch.tensor([0, 1, 0, 1]),
     )
-    assert not selected.any()
+    assert torch.count_nonzero(weights) == 0
 
 
 def test_mentor_transfer_is_training_only():
