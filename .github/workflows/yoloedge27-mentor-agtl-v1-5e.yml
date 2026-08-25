@@ -24,6 +24,7 @@ jobs:
       PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
       DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
       MENTOR_PT: /home/minh/yoloedge27_experiments/stage1/edge27_spr_v1_50e/runs/sprdown_reg16_standard_attn-none_50e_seed42/weights/best.pt
+      YOLOEDGE27_MENTOR_PT: /home/minh/yoloedge27_experiments/stage1/edge27_spr_v1_50e/runs/sprdown_reg16_standard_attn-none_50e_seed42/weights/best.pt
       SCREEN_ROOT: /home/minh/yoloedge27_experiments/stage4/mentor_agtl_v1_5e
       REPORT_DIR: reports/yoloedge27/stage4/mentor_agtl_v1_5e
       PYTHONPATH: ${{ github.workspace }}/third_party/ultralytics:${{ github.workspace }}
@@ -45,8 +46,11 @@ jobs:
           grep -q 'advantage_gate' src/mentor_transfer_loss.py
           grep -q 'teacher_iou - student_iou' src/mentor_transfer_loss.py
           test -f "$MENTOR_PT"
+          test "$YOLOEDGE27_MENTOR_PT" = "$MENTOR_PT"
+          test -f "$YOLOEDGE27_MENTOR_PT"
           test -f reports/yoloedge27/stage3/head_snr_v1_5e/summary.json
           echo "Frozen mentor: $MENTOR_PT"
+          echo "Criterion mentor env: $YOLOEDGE27_MENTOR_PT"
 
       - name: Pre-flight GPU and dataset
         shell: bash
@@ -54,11 +58,14 @@ jobs:
           set -euo pipefail
           nvidia-smi
           "$PYTHON_BIN" - <<'PY'
+          import os
           import torch
           print('Torch:', torch.__version__)
           print('CUDA:', torch.version.cuda)
           print('CUDA available:', torch.cuda.is_available())
+          print('Mentor env:', os.environ.get('YOLOEDGE27_MENTOR_PT'))
           assert torch.cuda.is_available()
+          assert os.environ.get('YOLOEDGE27_MENTOR_PT')
           print('GPU:', torch.cuda.get_device_name(0))
           PY
           test -d "$DATASET/VisDrone2019-DET-train/images"
