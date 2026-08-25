@@ -1,6 +1,6 @@
 task: detect
 mode: train
-model: /home/minh/yoloedge27_experiments/stage4/mentor_agtl_v1_5e/generated/model_spr-p4p5_direct-r1_standard_attn-none_5e_seed42.yaml
+model: /home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage4/mentor_agtl_v1_5e/model_agtl_v1.yaml
 data: /home/minh/yoloedge27_experiments/stage4/mentor_agtl_v1_5e/generated/visdrone_local.yaml
 epochs: 5
 time: null
