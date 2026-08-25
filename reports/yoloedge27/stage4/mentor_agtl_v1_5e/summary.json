@@ -1,0 +1,316 @@
+{
+  "purpose": "AGTL v1 local 5e mechanism screen; not final paper evidence.",
+  "novelty_status": "working contribution hypothesis only; inspired by selective/task-oriented KD literature, no novelty claim yet",
+  "student": "H1: S1 SPR P4->P5 + stock-width DFL-free Detect reg_max=1",
+  "mentor": {
+    "checkpoint": "/home/minh/yoloedge27_experiments/stage1/edge27_spr_v1_50e/runs/sprdown_reg16_standard_attn-none_50e_seed42/weights/best.pt",
+    "frozen": true,
+    "eval": {
+      "weights": "/home/minh/yoloedge27_experiments/stage1/edge27_spr_v1_50e/runs/sprdown_reg16_standard_attn-none_50e_seed42/weights/best.pt",
+      "preset": "edge27_head_direct_r1",
+      "experiment_tag": "spr-p4p5_direct-r1_standard_attn-none_5e_seed42",
+      "aggregate": {
+        "precision": 0.4072744763733994,
+        "recall": 0.32474938272400605,
+        "map50": 0.3032701546493718,
+        "map50_95": 0.17178436230979457
+      },
+      "per_class": {
+        "awning-tricycle": {
+          "precision": 0.2822327533121772,
+          "recall": 0.12406015037593984,
+          "map50": 0.09794837115733421,
+          "map50_95": 0.06311836098449797
+        },
+        "bicycle": {
+          "precision": 0.24444717008572586,
+          "recall": 0.03807303807303807,
+          "map50": 0.04877765155725099,
+          "map50_95": 0.01857352361051781
+        },
+        "bus": {
+          "precision": 0.5031336939031011,
+          "recall": 0.4262948207171315,
+          "map50": 0.40538018878583815,
+          "map50_95": 0.26963820096368096
+        },
+        "car": {
+          "precision": 0.5410893772814283,
+          "recall": 0.7906712172923777,
+          "map50": 0.7504555510695792,
+          "map50_95": 0.5022775651457676
+        },
+        "motor": {
+          "precision": 0.4672395209347011,
+          "recall": 0.3943521129091486,
+          "map50": 0.36232070968687363,
+          "map50_95": 0.1469342045903901
+        },
+        "pedestrian": {
+          "precision": 0.392798016465445,
+          "recall": 0.4090909090909091,
+          "map50": 0.3550641540810743,
+          "map50_95": 0.15159724592513762
+        },
+        "people": {
+          "precision": 0.46702300365873683,
+          "recall": 0.3017732000671955,
+          "map50": 0.28795123841296055,
+          "map50_95": 0.10460663481030316
+        },
+        "tricycle": {
+          "precision": 0.3865838935746072,
+          "recall": 0.16644919109891612,
+          "map50": 0.16532853924697205,
+          "map50_95": 0.08831996287221787
+        },
+        "truck": {
+          "precision": 0.3634451014943322,
+          "recall": 0.23333333333333334,
+          "map50": 0.21104568408931543,
+          "map50_95": 0.13367935126664687
+        },
+        "van": {
+          "precision": 0.4247522330237393,
+          "recall": 0.36339585428207105,
+          "map50": 0.34842945840651984,
+          "map50_95": 0.2390985729287856
+        }
+      },
+      "focus": {
+        "pedestrian": {
+          "precision": 0.392798016465445,
+          "recall": 0.4090909090909091,
+          "map50": 0.3550641540810743,
+          "map50_95": 0.15159724592513762
+        },
+        "people": {
+          "precision": 0.46702300365873683,
+          "recall": 0.3017732000671955,
+          "map50": 0.28795123841296055,
+          "map50_95": 0.10460663481030316
+        }
+      },
+      "speed_ms": {
+        "preprocess": 0.13958910401130117,
+        "inference": 1.5920123175193863,
+        "loss": 0.0004655766437228163,
+        "postprocess": 1.4643341076641534
+      }
+    }
+  },
+  "mechanism": {
+    "name": "Advantage-Gated Tiny Localization Transfer (AGTL)",
+    "mentor_lambda": 0.25,
+    "tiny_threshold_px": 16.0,
+    "advantage_margin": 0.05,
+    "min_teacher_iou": 0.1,
+    "selection": "student-assigned positive AND GT min-side<threshold AND mentor IoU > student IoU + margin",
+    "transfer": "decoded mentor box -> student decoded box via CIoU, weighted by detached mentor advantage",
+    "capacity_bridge": "mentor DFL distribution is decoded first; reg1 student never mimics mentor bins/features/logits",
+    "inference_change": "none",
+    "extra_prediction_channels": 0
+  },
+  "protocol": {
+    "epochs": 5,
+    "batch": 8,
+    "nbs": 16,
+    "imgsz": 640,
+    "seed": 42,
+    "pretrained_student": false
+  },
+  "controls": {
+    "H0": {
+      "id": "H0",
+      "preset": "edge27_spr_p4p5",
+      "description": "REUSED existing S1: SPR P4->P5 + stock Detect reg_max=16",
+      "status": "reused_existing",
+      "rerun": false,
+      "complexity": {
+        "params": 1736638,
+        "gflops": 9.9122
+      },
+      "epoch5": {
+        "precision": 0.24109,
+        "recall": 0.19443,
+        "map50": 0.14213,
+        "map50_95": 0.07379
+      },
+      "best_eval": {
+        "precision": 0.24151772295054963,
+        "recall": 0.1947574970672591,
+        "map50": 0.14290891413848147,
+        "map50_95": 0.07412907581209939
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.17224715050248374,
+          "recall": 0.31094527363184077,
+          "map50": 0.14414284104116837,
+          "map50_95": 0.05106804110233591
+        },
+        "people": {
+          "precision": 0.4097181898089238,
+          "recall": 0.13177860499869562,
+          "map50": 0.1332432397945635,
+          "map50_95": 0.03979999138819667
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.1585121551155959,
+        "inference": 1.5381940602575896,
+        "loss": 0.00043448722119575675,
+        "postprocess": 2.6878321386770057
+      },
+      "source_results": "/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage1/spr_placement_v1_5e/s1/results.csv",
+      "source_eval": "/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage1/spr_placement_v1_5e/s1/best_eval.json",
+      "delta_best_eval_vs_h0": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "map50": 0.0,
+        "map50_95": 0.0
+      }
+    },
+    "H1": {
+      "id": "H1",
+      "preset": "edge27_head_direct_r1",
+      "description": "stock Detect, global reg_max=1 / DFL-free control",
+      "status": "complete",
+      "rerun": true,
+      "complexity": {
+        "params": 1523322,
+        "gflops": 6.0501
+      },
+      "epoch5": {
+        "precision": 0.32298,
+        "recall": 0.19148,
+        "map50": 0.13678,
+        "map50_95": 0.06809
+      },
+      "best_eval": {
+        "precision": 0.3234986123515966,
+        "recall": 0.19125586123160976,
+        "map50": 0.13716525111748543,
+        "map50_95": 0.06838695464011774
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.1324230280495622,
+          "recall": 0.34294436906377207,
+          "map50": 0.1392833605031132,
+          "map50_95": 0.046377298980455714
+        },
+        "people": {
+          "precision": 0.3781135511941139,
+          "recall": 0.13482926829268294,
+          "map50": 0.11461462041310316,
+          "map50_95": 0.033674010065047555
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.16372997629498498,
+        "inference": 1.1806755857740254,
+        "loss": 0.00043318246806297033,
+        "postprocess": 2.598589987196215
+      },
+      "onnx_export": {
+        "ok": true
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage3/head_snr_v1_5e/h1_edge27_head_direct_r1/runs/spr-p4p5_direct-r1_standard_attn-none_5e_seed42/weights/best.pt",
+      "delta_best_eval_vs_h0": {
+        "precision": 0.08198088940104697,
+        "recall": -0.0035016358356493305,
+        "map50": -0.005743663020996048,
+        "map50_95": -0.005742121171981654
+      }
+    }
+  },
+  "M1": {
+    "id": "M1",
+    "description": "H1 DFL-free student + Advantage-Gated Tiny Localization Transfer",
+    "status": "complete",
+    "complexity": {
+      "params": 1523322,
+      "gflops": 6.0500992
+    },
+    "epoch5": {
+      "precision": 0.32298,
+      "recall": 0.19148,
+      "map50": 0.13678,
+      "map50_95": 0.06809
+    },
+    "best_eval": {
+      "precision": 0.3234986123515966,
+      "recall": 0.19125586123160976,
+      "map50": 0.13716525111748543,
+      "map50_95": 0.06838695464011774
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.1324230280495622,
+        "recall": 0.34294436906377207,
+        "map50": 0.1392833605031132,
+        "map50_95": 0.046377298980455714
+      },
+      "people": {
+        "precision": 0.3781135511941139,
+        "recall": 0.13482926829268294,
+        "map50": 0.11461462041310316,
+        "map50_95": 0.033674010065047555
+      }
+    },
+    "speed_ms_best_eval": {
+      "preprocess": 0.14087185584155926,
+      "inference": 1.1903384908744084,
+      "loss": 0.00043834854069996085,
+      "postprocess": 2.5774570912411225
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage4/mentor_agtl_v1_5e/runs/spr-p4p5_agtl-l0.25-t16-a0.05_reg1_5e_seed42/weights/best.pt",
+    "delta_best_eval_vs_h0": {
+      "precision": 0.08198088940104697,
+      "recall": -0.0035016358356493305,
+      "map50": -0.005743663020996048,
+      "map50_95": -0.005742121171981654
+    },
+    "delta_focus_vs_h0": {
+      "pedestrian": {
+        "precision": -0.03982412245292152,
+        "recall": 0.0319990954319313,
+        "map50": -0.004859480538055155,
+        "map50_95": -0.004690742121880198
+      },
+      "people": {
+        "precision": -0.03160463861480994,
+        "recall": 0.0030506632939873157,
+        "map50": -0.01862861938146035,
+        "map50_95": -0.006125981323149114
+      }
+    },
+    "delta_best_eval_vs_h1": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "map50": 0.0,
+      "map50_95": 0.0
+    },
+    "delta_focus_vs_h1": {
+      "pedestrian": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "map50": 0.0,
+        "map50_95": 0.0
+      },
+      "people": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "map50": 0.0,
+        "map50_95": 0.0
+      }
+    }
+  },
+  "decision_rule": "Promote only if M1 improves H1 accuracy, especially pedestrian/people, at exactly H1 inference complexity.",
+  "caution": "single local seed and 5 epochs; mentor-assisted training is a screen only."
+}
