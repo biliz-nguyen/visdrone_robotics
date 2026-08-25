@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT))
 EXPERIMENT = ROOT / "config" / "experiment.yaml"
 LOCAL = ROOT / "config" / "local.yaml"
 CONTROL_SUMMARY = ROOT / "reports" / "yoloedge27" / "stage3" / "head_snr_v1_5e" / "summary.json"
+AGTL_V1_SUMMARY = ROOT / "reports" / "yoloedge27" / "stage4" / "mentor_agtl_v1_5e" / "summary.json"
 
 
 def parse_args():
@@ -145,9 +146,16 @@ def main() -> int:
         raise FileNotFoundError(f"Mentor checkpoint not found: {mentor}")
     if not CONTROL_SUMMARY.exists():
         raise FileNotFoundError(CONTROL_SUMMARY)
+    if not AGTL_V1_SUMMARY.exists():
+        raise FileNotFoundError(AGTL_V1_SUMMARY)
 
     prior = json.loads(CONTROL_SUMMARY.read_text(encoding="utf-8"))
-    controls = {k: prior["variants"][k] for k in ("H0", "H1")}
+    agtl_v1 = json.loads(AGTL_V1_SUMMARY.read_text(encoding="utf-8"))
+    controls = {
+        "H0": prior["variants"]["H0"],
+        "H1": prior["variants"]["H1"],
+        "M1": agtl_v1["M1"],
+    }
 
     shutil.rmtree(screen_root, ignore_errors=True)
     for p in (
@@ -205,10 +213,10 @@ def main() -> int:
         resolved, data_yaml, generated_model_yaml = prepare_runtime()
         patch_model_yaml(generated_model_yaml, args)
 
-        # Keep the AGTL YAML outside generated/. Other helper subprocesses call
-        # prepare_runtime() and can regenerate generated/model_*.yaml as the H1
-        # control. Using an isolated copy prevents that silent overwrite.
-        agtl_model_yaml = report_dir / "model_agtl_v1.yaml"
+        # Keep the AGTL YAML outside generated/. Helper subprocesses can call
+        # prepare_runtime() and regenerate ordinary H1 model files; an isolated
+        # copy prevents a silent fallback from AGTL to stock Detect.
+        agtl_model_yaml = report_dir / "model_agtl_v2.yaml"
         shutil.copy2(generated_model_yaml, agtl_model_yaml)
 
         import torch
@@ -231,9 +239,7 @@ def main() -> int:
         gc.collect()
         torch.cuda.empty_cache()
 
-        # Record the actual frozen mentor's screening metrics. This subprocess
-        # may regenerate the ordinary H1 YAML, but it cannot touch the isolated
-        # AGTL YAML above.
+        # Record the exact frozen mentor used by this screen.
         mentor_eval_path = report_dir / "mentor_eval.json"
         run_live(
             [sys.executable, "scripts/eval_screening.py", "--weights", str(mentor), "--output", str(mentor_eval_path)],
@@ -242,17 +248,16 @@ def main() -> int:
 
         t = resolved["train"]
         run_name = (
-            f"spr-p4p5_agtl-l{args.mentor_lambda:g}-t{args.tiny_threshold:g}-"
-            f"a{args.advantage_margin:g}_reg1_{args.epochs}e_seed{resolved['seed']}"
+            f"spr-p4p5_agtl2-object-balanced-l{args.mentor_lambda:g}-"
+            f"t{args.tiny_threshold:g}-a{args.advantage_margin:g}_"
+            f"reg1_{args.epochs}e_seed{resolved['seed']}"
         )
 
-        # Re-create from the isolated YAML and verify again immediately before
-        # handing the model to the Ultralytics trainer. This makes a silent H1
-        # fallback a hard failure instead of producing a false AGTL result.
+        # Verify immediately before handing the model to Ultralytics trainer.
         student = YOLO(str(agtl_model_yaml))
         assert_agtl_student(student)
-        print("AGTL pre-train head:", student.model.model[-1].__class__.__name__)
-        print("AGTL pre-train YAML:", agtl_model_yaml)
+        print("AGTL v2 pre-train head:", student.model.model[-1].__class__.__name__)
+        print("AGTL v2 pre-train YAML:", agtl_model_yaml)
 
         student.train(
             data=str(data_yaml),
@@ -307,7 +312,7 @@ def main() -> int:
         results = newest(screen_root, "runs/*/results.csv")
         train_args = newest(screen_root, "runs/*/args.yaml")
 
-        eval_path = report_dir / "agtl_v1_5e_eval.json"
+        eval_path = report_dir / "agtl_v2_5e_eval.json"
         run_live(
             [sys.executable, "scripts/eval_screening.py", "--weights", str(best), "--output", str(eval_path)],
             env,
@@ -327,9 +332,9 @@ def main() -> int:
         eval_data = json.loads(eval_path.read_text(encoding="utf-8"))
         mentor_eval = json.loads(mentor_eval_path.read_text(encoding="utf-8"))
 
-        m1 = {
-            "id": "M1",
-            "description": "H1 DFL-free student + Advantage-Gated Tiny Localization Transfer",
+        m2 = {
+            "id": "M2",
+            "description": "H1 DFL-free student + Object-Balanced AGTL v2",
             "status": "complete",
             "complexity": complexity,
             "epoch5": parse_epoch_row(results, int(args.epochs)),
@@ -340,14 +345,14 @@ def main() -> int:
             "local_best_pt": str(best),
         }
         for cid, control in controls.items():
-            m1[f"delta_best_eval_vs_{cid.lower()}"] = metric_delta(m1["best_eval"], control["best_eval"])
-            m1[f"delta_focus_vs_{cid.lower()}"] = focus_delta(
-                m1["focus_best_eval"], control.get("focus_best_eval", {})
+            m2[f"delta_best_eval_vs_{cid.lower()}"] = metric_delta(m2["best_eval"], control["best_eval"])
+            m2[f"delta_focus_vs_{cid.lower()}"] = focus_delta(
+                m2["focus_best_eval"], control.get("focus_best_eval", {})
             )
 
         summary = {
-            "purpose": "AGTL v1 local 5e mechanism screen; not final paper evidence.",
-            "novelty_status": "working contribution hypothesis only; inspired by selective/task-oriented KD literature, no novelty claim yet",
+            "purpose": "AGTL v2 object-balanced local 5e mechanism screen; not final paper evidence.",
+            "novelty_status": "working contribution hypothesis only; no novelty claim yet",
             "student": "H1: S1 SPR P4->P5 + stock-width DFL-free Detect reg_max=1",
             "mentor": {
                 "checkpoint": str(mentor),
@@ -355,14 +360,16 @@ def main() -> int:
                 "eval": mentor_eval,
             },
             "mechanism": {
-                "name": "Advantage-Gated Tiny Localization Transfer (AGTL)",
+                "name": "Object-Balanced Advantage-Gated Tiny Localization Transfer (AGTL v2)",
                 "mentor_lambda": float(args.mentor_lambda),
                 "tiny_threshold_px": float(args.tiny_threshold),
                 "advantage_margin": float(args.advantage_margin),
                 "min_teacher_iou": float(args.min_teacher_iou),
-                "selection": "student-assigned positive AND GT min-side<threshold AND mentor IoU > student IoU + margin",
+                "candidate_selection": "same as v1: student-assigned positive AND GT min-side<threshold AND mentor IoU > student IoU + margin",
+                "object_balance": "group candidates by (image, assigned GT) and keep exactly one maximum-advantage positive per object",
                 "transfer": "decoded mentor box -> student decoded box via CIoU, weighted by detached mentor advantage",
-                "capacity_bridge": "mentor DFL distribution is decoded first; reg1 student never mimics mentor bins/features/logits",
+                "normalization": "unchanged from v1: TAL weight and target_scores_sum denominator",
+                "capacity_bridge": "mentor DFL distribution decoded first; reg1 student never mimics mentor bins/features/logits",
                 "inference_change": "none",
                 "extra_prediction_channels": 0,
             },
@@ -375,13 +382,13 @@ def main() -> int:
                 "pretrained_student": False,
             },
             "controls": controls,
-            "M1": m1,
-            "decision_rule": "Promote only if M1 improves H1 accuracy, especially pedestrian/people, at exactly H1 inference complexity.",
+            "M2": m2,
+            "decision_rule": "Promote only if M2 improves H1 aggregate accuracy and gives a better pedestrian/people trade-off than M1 at exactly H1 inference complexity.",
             "caution": "single local seed and 5 epochs; mentor-assisted training is a screen only.",
         }
         (report_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
         (report_dir / "paths.txt").write_text(
-            f"mentor_pt={mentor}\nbest_pt={best}\nresults_csv={results}\ncontrol_summary={CONTROL_SUMMARY}\nagtl_model_yaml={agtl_model_yaml}\n",
+            f"mentor_pt={mentor}\nbest_pt={best}\nresults_csv={results}\ncontrol_summary={CONTROL_SUMMARY}\nagtl_v1_summary={AGTL_V1_SUMMARY}\nagtl_model_yaml={agtl_model_yaml}\n",
             encoding="utf-8",
         )
         print(json.dumps(summary, indent=2))
