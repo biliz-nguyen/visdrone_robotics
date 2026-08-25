@@ -70,7 +70,24 @@ def main():
 
     criterion = model.model.init_criterion()
     assigner_name = criterion.assigner.__class__.__name__
-    assert assigner_name == "TaskAlignedAssigner"
+    assigner_mode = cfg.get("assigner_mode", "standard")
+    expected_assigners = {
+        "standard": "TaskAlignedAssigner",
+        "pixel_stable": "TinyPixelStableAssigner",
+    }
+    if assigner_mode not in expected_assigners:
+        raise AssertionError(f"Unsupported sanity-check assigner_mode={assigner_mode!r}")
+    expected_assigner = expected_assigners[assigner_mode]
+    assert assigner_name == expected_assigner, (
+        f"Assigner mismatch: mode={assigner_mode!r}, got={assigner_name}, "
+        f"expected={expected_assigner}"
+    )
+
+    if assigner_mode == "pixel_stable":
+        psta = cfg.get("pixel_stable_assigner", {})
+        assert float(criterion.assigner.tiny_min_side) == float(psta["tiny_min_side"])
+        assert float(criterion.assigner.perturb_px) == float(psta["perturb_px"])
+
     if head_mode == "stride_reg":
         assert criterion.__class__.__name__ == "StrideRegDetectionLoss"
         assert list(criterion.reg_bins) == bins
@@ -106,6 +123,7 @@ def main():
     print("Head:", detect.__class__.__name__)
     print("Head mode:", head_mode)
     print("Regression bins P2/P3/P4:", bins)
+    print("Assigner mode:", assigner_mode)
     print("Assigner:", assigner_name)
     print("Strides:", strides)
     print("SPRDown count:", len(sprdowns))
