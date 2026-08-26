@@ -1,6 +1,11 @@
 name: YOLOEdge27 C3 TSC 5e Screen
 
 on:
+  push:
+    branches:
+      - research/yoloedge27-c3-tinyopt-v1
+    paths:
+      - .github/workflows/yoloedge27-c3-tsc-v1-5e.yml
   workflow_dispatch:
 
 concurrency:
