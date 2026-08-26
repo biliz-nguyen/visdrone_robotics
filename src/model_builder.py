@@ -35,9 +35,9 @@ def _detect_line(cfg: dict, indices: list[int]) -> str:
 def _neck_fusion_line(cfg: dict, c2: int) -> str:
     """Return one neck fusion layer while keeping YAML layer indices stable."""
     if cfg.get("neck_mode", "standard") == "rep":
-        # RepC3k2 owns its two internal bottlenecks so the YAML layer itself is
-        # repeated once. This preserves the surrounding PAN/FPN graph indices.
-        return f"  - [-1, 1, RepC3k2, [{int(c2)}, 2, false]]"
+        # Standard C3k2(c3k=False) keeps residual bottlenecks enabled by default.
+        # RepC3k2 therefore uses shortcut=True for the closest deploy-graph match.
+        return f"  - [-1, 1, RepC3k2, [{int(c2)}, 2, true]]"
     return f"  - [-1, 2, C3k2, [{int(c2)}, false]]"
 
 
