@@ -27,7 +27,8 @@ CLASS_NAMES = [
 SPR_PLACEMENT_ORDER = ("p2_p3", "p3_p4", "p4_p5")
 SPR_PLACEMENT_SET = set(SPR_PLACEMENT_ORDER)
 HEAD_MODES = {"standard", "stride_reg"}
-NECK_MODES = {"standard", "rep"}
+NECK_MODES = {"standard", "rep", "realloc"}
+N2_REALLOC_NOMINAL = {"p2": 160, "p3": 256, "p4": 384}
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -63,6 +64,26 @@ def normalize_head_bins(cfg: dict[str, Any]) -> list[int]:
     return [int(x) for x in raw]
 
 
+def normalize_neck_channels(cfg: dict[str, Any]) -> dict[str, int]:
+    """Return nominal YAML widths for P2/P3/P4 neck outputs.
+
+    N2 is deliberately locked to one hypothesis chosen before training:
+    P2 +25%, P3 unchanged, P4 -25% relative to H1 nominal widths
+    128/256/512. This prevents post-hoc width fishing during the 5e screen.
+    """
+    if cfg.get("neck_mode", "standard") != "realloc":
+        return {"p2": 128, "p3": 256, "p4": 512}
+    raw = cfg.get("neck_channels_nominal", N2_REALLOC_NOMINAL)
+    if not isinstance(raw, dict):
+        raise ValueError("neck_channels_nominal must be a mapping with p2/p3/p4")
+    out = {k: int(raw[k]) for k in ("p2", "p3", "p4")}
+    if out != N2_REALLOC_NOMINAL:
+        raise ValueError(
+            f"N2 v1 is locked to neck_channels_nominal={N2_REALLOC_NOMINAL}, got {out}"
+        )
+    return out
+
+
 def load_config(
     experiment_path: str | Path = DEFAULT_EXPERIMENT,
     local_path: str | Path = DEFAULT_LOCAL,
@@ -93,6 +114,7 @@ def load_config(
     resolved["head_mode"] = resolved.get("head_mode", "standard")
     resolved["head_reg_bins"] = normalize_head_bins(resolved)
     resolved["neck_mode"] = resolved.get("neck_mode", "standard")
+    resolved["neck_channels_nominal"] = normalize_neck_channels(resolved)
     resolved["study"] = resolved.get("study", "placement")
 
     resolved["dataset_root"] = str(Path(local["dataset_root"]).expanduser().resolve())
@@ -193,6 +215,9 @@ def _validate(cfg: dict[str, Any]) -> None:
             raise ValueError("Neck study is locked to H1 direct reg_max=1 head")
         if neck_mode not in NECK_MODES:
             raise ValueError(f"Unknown neck_mode={neck_mode!r}")
+        if neck_mode == "realloc":
+            # Trigger the locked-v1 check explicitly during validation too.
+            normalize_neck_channels(cfg)
     else:
         raise ValueError(f"Unknown study={study!r}")
 
@@ -226,7 +251,14 @@ def experiment_tag(cfg: dict[str, Any]) -> str:
         )
 
     if study == "neck":
-        neck_tag = "repneck" if cfg.get("neck_mode") == "rep" else "stdneck"
+        mode = cfg.get("neck_mode")
+        if mode == "rep":
+            neck_tag = "repneck"
+        elif mode == "realloc":
+            c = normalize_neck_channels(cfg)
+            neck_tag = f"realloc-{c['p2']}-{c['p3']}-{c['p4']}"
+        else:
+            neck_tag = "stdneck"
         return (
             f"{arch_tag}_{neck_tag}_direct-r1_{loss_tag}_attn-{cfg['attention']}_"
             f"{int(cfg['train']['epochs'])}e_seed{int(cfg['seed'])}"
