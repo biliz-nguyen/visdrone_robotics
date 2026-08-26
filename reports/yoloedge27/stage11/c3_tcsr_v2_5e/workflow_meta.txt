@@ -1,0 +1,8 @@
+branch=research/yoloedge27-c3-tinyopt-v2
+head=db2fe33650daa1140bd64cd11fddda5d7bfd9b1a
+mechanism=C3-v2 Tiny Center-Stable Ranking
+base=C1 SPR + C2 N2b + direct reg1
+changed_scope=training-only TAL tiny-GT top-k ranking
+tiny_min_side=16.0
+epochs=5
+test_dev_used=false
