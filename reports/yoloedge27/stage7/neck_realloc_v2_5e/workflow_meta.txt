@@ -1,0 +1,14 @@
+branch=research/yoloedge27-neck-realloc-v2
+head=fb7625b5121c3852834f6c7d3d43134f24f7b6f0
+screen_root=/home/minh/yoloedge27_experiments/stage7/neck_realloc_v2_5e
+variant=N2b moderate fine-scale neck reallocation
+base=H1 direct reg1 with S1 SPR P4->P5
+nominal_neck=P2:160 P3:256 P4:448
+effective_neck=P2:40 P3:64 P4:112
+epochs=5
+attention=none
+assignment=stock TAL
+reparameterization=none
+gflops_budget=1.03x H1
+params_budget=1.10x H1
+note=single targeted follow-up after N2; local mechanism screening only
