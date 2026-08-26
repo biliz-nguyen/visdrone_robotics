@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# C3-v1 is preregistered to tau=16 px and gamma_floor=0.5; tests must not be
+# relaxed after looking at validation results.
 import torch
 
 from ultralytics.utils.tal import TaskAlignedAssigner
