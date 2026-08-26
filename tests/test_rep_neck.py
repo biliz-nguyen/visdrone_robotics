@@ -25,6 +25,26 @@ def test_repconv_unit_fuses_equivalently():
     assert _max_abs(y_train_graph, y_deploy) < 2e-5
 
 
+def test_asymmetric_repconv_matches_c3k2_bottleneck_width_and_fuses():
+    """C3k2(c3k=False) first bottleneck conv is c -> c/2, so N1 must match it."""
+    torch.manual_seed(9)
+    m = RepConvUnit(16, 8).eval()
+    assert m.in_channels == 16
+    assert m.out_channels == 8
+    assert m.rbr_identity is None
+    x = torch.randn(2, 16, 13, 15)
+    with torch.no_grad():
+        y0 = m(x)
+    m.switch_to_deploy()
+    with torch.no_grad():
+        y1 = m(x)
+    assert y0.shape == (2, 8, 13, 15)
+    assert y1.shape == y0.shape
+    assert m.reparam.in_channels == 16
+    assert m.reparam.out_channels == 8
+    assert _max_abs(y0, y1) < 2e-5
+
+
 def test_repc3k2_shape_and_deploy_equivalence():
     torch.manual_seed(11)
     m = RepC3k2(48, 32, n=2, shortcut=True).eval()
@@ -38,6 +58,15 @@ def test_repc3k2_shape_and_deploy_equivalence():
     assert y1.shape == y0.shape
     assert _max_abs(y0, y1) < 3e-5
 
+    # Stock Ultralytics C3k2(c3k=False) uses Bottleneck(self.c, self.c)
+    # with Bottleneck default e=0.5. N1 must therefore use hidden -> hidden/2
+    # on the first 3x3 before returning hidden channels on the second 3x3.
+    for block in m.m:
+        assert block.cv1.in_channels == m.hidden
+        assert block.cv1.out_channels == max(1, m.hidden // 2)
+        assert block.cv2.conv.in_channels == max(1, m.hidden // 2)
+        assert block.cv2.conv.out_channels == m.hidden
+
 
 def test_deploy_removes_parallel_rep_branches():
     m = RepC3k2(32, 32, n=2, shortcut=True).eval()
@@ -48,7 +77,8 @@ def test_deploy_removes_parallel_rep_branches():
         assert hasattr(block.cv1, "reparam")
         assert not hasattr(block.cv1, "rbr_dense")
         assert not hasattr(block.cv1, "rbr_1x1")
-        assert not hasattr(block.cv1, "rbr_identity")
+        # The internal C3k2 bottleneck is asymmetric, so there was no identity branch.
+        assert block.cv1.in_channels != block.cv1.out_channels
 
 
 def test_repeat_modules_patch_accepts_inline_comment_after_frozenset_open():
