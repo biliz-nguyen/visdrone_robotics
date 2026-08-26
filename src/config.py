@@ -28,6 +28,7 @@ SPR_PLACEMENT_ORDER = ("p2_p3", "p3_p4", "p4_p5")
 SPR_PLACEMENT_SET = set(SPR_PLACEMENT_ORDER)
 HEAD_MODES = {"standard", "stride_reg"}
 NECK_MODES = {"standard", "rep", "realloc"}
+ASSIGNER_MODES = {"standard", "tiny_supervision"}
 N2_REALLOC_NOMINAL = {"p2": 160, "p3": 256, "p4": 384}
 N2B_REALLOC_NOMINAL = {"p2": 160, "p3": 256, "p4": 416}
 ALLOWED_REALLOC_NOMINALS = (N2_REALLOC_NOMINAL, N2B_REALLOC_NOMINAL)
@@ -121,6 +122,7 @@ def load_config(
     resolved["head_reg_bins"] = normalize_head_bins(resolved)
     resolved["neck_mode"] = resolved.get("neck_mode", "standard")
     resolved["neck_channels_nominal"] = normalize_neck_channels(resolved)
+    resolved["assigner_mode"] = resolved.get("assigner_mode", "standard")
     resolved["study"] = resolved.get("study", "placement")
 
     resolved["dataset_root"] = str(Path(local["dataset_root"]).expanduser().resolve())
@@ -151,6 +153,18 @@ def load_config(
     return resolved
 
 
+def _validate_tiny_supervision(cfg: dict[str, Any]) -> None:
+    q = cfg.get("tiny_supervision", {})
+    tiny_min_side = float(q.get("tiny_min_side", -1))
+    gamma_floor = float(q.get("gamma_floor", -1))
+    # C3-v1 is intentionally preregistered to one mechanism setting. Do not
+    # turn this into a threshold/gamma search after seeing validation results.
+    if tiny_min_side != 16.0:
+        raise ValueError("C3-v1 locks tiny_min_side=16.0 pixels")
+    if gamma_floor != 0.5:
+        raise ValueError("C3-v1 locks gamma_floor=0.5")
+
+
 def _validate(cfg: dict[str, Any]) -> None:
     if cfg["backbone_down"] not in {"conv", "aconv", "sprdown"}:
         raise ValueError(cfg["backbone_down"])
@@ -164,6 +178,8 @@ def _validate(cfg: dict[str, Any]) -> None:
         raise ValueError(cfg.get("head_mode"))
     if cfg.get("neck_mode", "standard") not in NECK_MODES:
         raise ValueError(cfg.get("neck_mode"))
+    if cfg.get("assigner_mode", "standard") not in ASSIGNER_MODES:
+        raise ValueError(cfg.get("assigner_mode"))
     if cfg.get("dataset_format") not in {"visdrone_official", "yolo"}:
         raise ValueError("dataset_format must be 'visdrone_official' or 'yolo'")
     if cfg.get("pretrained", False):
@@ -180,8 +196,11 @@ def _validate(cfg: dict[str, Any]) -> None:
     study = cfg.get("study", "placement")
     head_mode = cfg.get("head_mode", "standard")
     neck_mode = cfg.get("neck_mode", "standard")
+    assigner_mode = cfg.get("assigner_mode", "standard")
 
     if study == "placement":
+        if assigner_mode != "standard":
+            raise ValueError("Placement study must keep standard TAL")
         if placements:
             if cfg["loss_mode"] != "standard":
                 raise ValueError("SPR placement screening must keep standard loss")
@@ -195,6 +214,8 @@ def _validate(cfg: dict[str, Any]) -> None:
             raise ValueError("Placement study must keep the standard neck")
 
     elif study == "head":
+        if assigner_mode != "standard":
+            raise ValueError("Head study must keep standard TAL")
         if placements != ["p4_p5"]:
             raise ValueError("Head study is locked to the confirmed S1 SPR placement P4->P5")
         if cfg["loss_mode"] != "standard" or cfg["attention"] != "none":
@@ -213,6 +234,8 @@ def _validate(cfg: dict[str, Any]) -> None:
             raise ValueError("Standard-head variant in the head study is reserved for the DFL-free reg_max=1 control")
 
     elif study == "neck":
+        if assigner_mode != "standard":
+            raise ValueError("Neck study must keep standard TAL")
         if placements != ["p4_p5"]:
             raise ValueError("Neck study is locked to the confirmed S1 SPR placement P4->P5")
         if cfg["loss_mode"] != "standard" or cfg["attention"] != "none":
@@ -223,6 +246,21 @@ def _validate(cfg: dict[str, Any]) -> None:
             raise ValueError(f"Unknown neck_mode={neck_mode!r}")
         if neck_mode == "realloc":
             normalize_neck_channels(cfg)
+
+    elif study == "optimization":
+        # C3 is evaluated only on the frozen C1+C2 architecture. Architecture,
+        # head and augmentation are not allowed to move during this screen.
+        if placements != ["p4_p5"]:
+            raise ValueError("C3 optimization is locked to S1 SPR P4->P5")
+        if cfg["loss_mode"] != "standard" or cfg["attention"] != "none":
+            raise ValueError("C3 optimization must keep standard loss and no attention")
+        if head_mode != "standard" or int(cfg["reg_max"]) != 1:
+            raise ValueError("C3 optimization is locked to the DFL-free reg_max=1 head")
+        if neck_mode != "realloc" or normalize_neck_channels(cfg) != N2B_REALLOC_NOMINAL:
+            raise ValueError("C3 optimization is locked to frozen N2b 160/256/416 neck")
+        if assigner_mode != "tiny_supervision":
+            raise ValueError("C3-v1 requires assigner_mode=tiny_supervision")
+        _validate_tiny_supervision(cfg)
     else:
         raise ValueError(f"Unknown study={study!r}")
 
@@ -255,7 +293,7 @@ def experiment_tag(cfg: dict[str, Any]) -> str:
             f"{int(cfg['train']['epochs'])}e_seed{int(cfg['seed'])}"
         )
 
-    if study == "neck":
+    if study in {"neck", "optimization"}:
         mode = cfg.get("neck_mode")
         if mode == "rep":
             neck_tag = "repneck"
@@ -264,8 +302,9 @@ def experiment_tag(cfg: dict[str, Any]) -> str:
             neck_tag = f"realloc-{c['p2']}-{c['p3']}-{c['p4']}"
         else:
             neck_tag = "stdneck"
+        opt_tag = "_tsc" if study == "optimization" else ""
         return (
-            f"{arch_tag}_{neck_tag}_direct-r1_{loss_tag}_attn-{cfg['attention']}_"
+            f"{arch_tag}_{neck_tag}_direct-r1{opt_tag}_{loss_tag}_attn-{cfg['attention']}_"
             f"{int(cfg['train']['epochs'])}e_seed{int(cfg['seed'])}"
         )
 
