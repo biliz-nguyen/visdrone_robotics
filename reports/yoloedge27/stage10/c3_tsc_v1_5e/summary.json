@@ -1,0 +1,133 @@
+{
+  "purpose": "C3-v1 Tiny-Supervision Calibration local 5e screen; not final paper evidence.",
+  "novelty_status": "working optimization hypothesis only; no novelty claim",
+  "mechanism": {
+    "name": "Tiny-Supervision Calibration (TSC)",
+    "changed_scope": "TAL post-assignment soft-target amplitude only",
+    "candidate_region": "unchanged standard TAL",
+    "topk_ranking": "unchanged standard TAL",
+    "conflict_resolution": "unchanged standard TAL",
+    "target_boxes": "unchanged standard TAL",
+    "tiny_min_side": 16.0,
+    "gamma_floor": 0.5,
+    "inference_overhead": "none"
+  },
+  "protocol": {
+    "epochs": 5,
+    "batch": 8,
+    "nbs": 16,
+    "workers": 4,
+    "imgsz": 640,
+    "seed": 42,
+    "pretrained": false,
+    "architecture": "frozen C1+C2 N2b",
+    "test_dev_used": false
+  },
+  "control": {
+    "id": "N2b-5e-stock-TAL",
+    "source": "/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage7/neck_realloc_v2_5e/neck_realloc_v2_5e_eval.json",
+    "best_eval": {
+      "precision": 0.32377698450992576,
+      "recall": 0.19778084383604064,
+      "map50": 0.14413927475479643,
+      "map50_95": 0.0717339895878833
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.13589282226094615,
+        "recall": 0.34882406151062867,
+        "map50": 0.1476392765499091,
+        "map50_95": 0.05142323744247081
+      },
+      "people": {
+        "precision": 0.4033307189496828,
+        "recall": 0.13014634146341464,
+        "map50": 0.1216662127680507,
+        "map50_95": 0.03604498280785341
+      }
+    },
+    "speed_ms_best_eval": {
+      "preprocess": 0.1487265219035233,
+      "inference": 1.2617845930661291,
+      "loss": 0.0004375547360477801,
+      "postprocess": 2.732010394165096
+    },
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    }
+  },
+  "candidate": {
+    "status": "complete",
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.1555
+    },
+    "epoch5": {
+      "precision": 0.3058,
+      "recall": 0.20126,
+      "map50": 0.13689,
+      "map50_95": 0.06636
+    },
+    "best_eval": {
+      "precision": 0.30669968293211486,
+      "recall": 0.20106883314037166,
+      "map50": 0.1373179732414169,
+      "map50_95": 0.06644054498818502
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.12093064506294701,
+        "recall": 0.39337403889642697,
+        "map50": 0.1555859414577927,
+        "map50_95": 0.05029575382971704
+      },
+      "people": {
+        "precision": 0.32935036947711394,
+        "recall": 0.16878048780487806,
+        "map50": 0.12618411589908562,
+        "map50_95": 0.03715734386532267
+      }
+    },
+    "speed_ms_best_eval": {
+      "preprocess": 0.14671401277072402,
+      "inference": 1.3126554507275647,
+      "loss": 0.0004509945234783456,
+      "postprocess": 3.7324661204389074
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage10/c3_tsc_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_tsc_standard_attn-none_5e_seed42/weights/best.pt"
+  },
+  "comparison": {
+    "delta_candidate_minus_n2b": {
+      "precision": -0.0170773015778109,
+      "recall": 0.0032879893043310238,
+      "map50": -0.006821301513379535,
+      "map50_95": -0.0052934445996982715
+    },
+    "delta_focus_candidate_minus_n2b": {
+      "pedestrian": {
+        "precision": -0.014962177197999138,
+        "recall": 0.0445499773857983,
+        "map50": 0.007946664907883594,
+        "map50_95": -0.00112748361275377
+      },
+      "people": {
+        "precision": -0.07398034947256887,
+        "recall": 0.03863414634146342,
+        "map50": 0.004517903131034923,
+        "map50_95": 0.0011123610574692577
+      }
+    },
+    "same_params": true,
+    "same_gflops": true
+  },
+  "promotion": {
+    "promote_to_50e": false,
+    "rule": "mAP50-95 >= N2b; mAP50 loss <=0.1pp; pedestrian/people mAP50-95 each no worse by >0.1pp; identical inference complexity; ONNX pass"
+  },
+  "caution": "single local seed, deterministic=false, 5 epochs only; final evidence requires 50e then locked Kaggle confirmation."
+}

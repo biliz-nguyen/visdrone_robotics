@@ -1,0 +1,9 @@
+branch=research/yoloedge27-c3-tinyopt-v1
+head=a398a222edf0c605cf04d0784c3db7a1ff378cfd
+mechanism=C3 Tiny-Supervision Calibration v1
+base=C1 SPR + C2 N2b + direct reg1
+changed_scope=training-only TAL soft-target amplitude
+tiny_min_side=16.0
+gamma_floor=0.5
+epochs=5
+test_dev_used=false
