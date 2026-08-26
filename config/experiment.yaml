@@ -2,9 +2,10 @@
 # YOLOEdge27 — Q1 RESEARCH TRACK
 # Confirmed backbone: one SPR-Down at P4->P5 (S1).
 # H1 direct reg_max=1 is the deployment control for neck studies.
+# C3-v2 is isolated on frozen C1+C2 N2b and changes training assignment only.
 # ============================================================
 
-preset: "edge27_head_snr_16_8_4"
+preset: "edge27_c3_tcsr_v2"
 
 ultralytics_tag: "v8.4.56"
 
@@ -127,9 +128,6 @@ presets:
       p4: 384
 
   # N2b budget-constrained recovery after N2.
-  # The first P4=448 preflight was rejected before training because GFLOPs
-  # exceeded 1.03x H1. Keep P2 boost, restore only 25% of the P4 capacity
-  # removed by N2, and stay inside the declared compute budget.
   # Relative to H1 nominal widths: P2 +25%, P3 0%, P4 -18.75%.
   # scale=n -> effective 40/64/104.
   edge27_neck_realloc_v2:
@@ -145,6 +143,26 @@ presets:
       p2: 160
       p3: 256
       p4: 416
+
+  # C3-v2: Tiny Center-Stable Ranking (TCSR).
+  # Frozen C1+C2 architecture. Only top-k TAL ranking for tiny GTs changes.
+  # min_side >=16 px is exactly standard TAL. No inference-time overhead.
+  edge27_c3_tcsr_v2:
+    study: "optimization"
+    backbone_down: "sprdown"
+    spr_placements: ["p4_p5"]
+    reg_max: 1
+    loss_mode: "standard"
+    attention: "none"
+    head_mode: "standard"
+    neck_mode: "realloc"
+    neck_channels_nominal:
+      p2: 160
+      p3: 256
+      p4: 416
+    assigner_mode: "tiny_center_rank"
+    tiny_center_rank:
+      tiny_min_side: 16.0
 
   edge27_head_snr_16_8_4:
     study: "head"
