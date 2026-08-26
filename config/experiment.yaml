@@ -9,7 +9,6 @@ preset: "edge27_head_snr_16_8_4"
 ultralytics_tag: "v8.4.56"
 
 presets:
-  # Existing placement presets retained for reproducibility.
   edge27_place_b0:
     study: "placement"
     backbone_down: "conv"
@@ -90,7 +89,6 @@ presets:
     head_mode: "standard"
     neck_mode: "standard"
 
-  # H1: deployment control. Stock Detect with global reg_max=1 (DFL-free).
   edge27_head_direct_r1:
     study: "head"
     backbone_down: "sprdown"
@@ -101,7 +99,6 @@ presets:
     head_mode: "standard"
     neck_mode: "standard"
 
-  # N1: H1 head + train-rich/deploy-simple reparameterized PAN/FPN neck.
   edge27_neck_rep_v1:
     study: "neck"
     backbone_down: "sprdown"
@@ -112,8 +109,24 @@ presets:
     head_mode: "standard"
     neck_mode: "rep"
 
-  # H2: primary head hypothesis. Fine P2 keeps 16 bins; coarser levels
-  # progressively reduce bins approximately with stride: 16 / 8 / 4.
+  # N2: fixed fine-scale-biased capacity reallocation.
+  # Relative to H1 nominal neck widths 128/256/512:
+  # P2 +25%, P3 unchanged, P4 -25%. With scale=n width=0.25,
+  # the deployed detection features become 40/64/96 channels.
+  edge27_neck_realloc_v1:
+    study: "neck"
+    backbone_down: "sprdown"
+    spr_placements: ["p4_p5"]
+    reg_max: 1
+    loss_mode: "standard"
+    attention: "none"
+    head_mode: "standard"
+    neck_mode: "realloc"
+    neck_channels_nominal:
+      p2: 160
+      p3: 256
+      p4: 384
+
   edge27_head_snr_16_8_4:
     study: "head"
     backbone_down: "sprdown"
@@ -125,7 +138,6 @@ presets:
     head_reg_bins: [16, 8, 4]
     neck_mode: "standard"
 
-  # H3: aggressive tiny-preserving stress test. Keep P2 rich, compress P3/P4.
   edge27_head_hybrid_16_4_1:
     study: "head"
     backbone_down: "sprdown"
@@ -137,9 +149,6 @@ presets:
     head_reg_bins: [16, 4, 1]
     neck_mode: "standard"
 
-# -------------------------
-# Fair train protocol. Screening workflows override to 5 epochs.
-# -------------------------
 train:
   imgsz: 640
   epochs: 50
