@@ -31,7 +31,7 @@ Strides: [4, 8, 16]
 SPRDown count: 1
 Attention: none
 Loss: standard
-Params: 1,851,402 (1.8514 M)
-GFLOPs: 8.1350
+Params: 1,629,322 (1.6293 M)
+GFLOPs: 6.7259
 Pretrained: False
 ==========================================================================================
