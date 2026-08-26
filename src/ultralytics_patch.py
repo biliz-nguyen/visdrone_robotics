@@ -49,19 +49,34 @@ def patch_ultralytics(cfg: dict) -> None:
 
 
 def _insert_into_frozenset(text: str, set_name: str, names: list[str]) -> str:
-    match = re.search(
-        rf"{re.escape(set_name)}\s*=\s*frozenset\(\s*\{{(?P<body>.*?)\}}\s*\)",
-        text,
-        flags=re.S,
-    )
-    if match is None:
-        raise RuntimeError(f"Cannot find {set_name} in tasks.py")
-    body = match.group("body")
-    missing = [name for name in names if not re.search(rf"\b{name}\b", body)]
+    """Insert symbols into a named frozenset assignment in Ultralytics tasks.py.
+
+    The pinned Ultralytics revision formats repeat_modules as
+    ``frozenset(  # comment`` followed by the opening ``{`` on the next line.
+    A regex that assumes ``frozenset(\s*{`` is therefore brittle.  Locate the
+    assignment and its set braces structurally instead, while still keeping the
+    patch deliberately narrow to the requested named set.
+    """
+    assignment = re.search(rf"\b{re.escape(set_name)}\s*=\s*frozenset\s*\(", text)
+    if assignment is None:
+        raise RuntimeError(f"Cannot find {set_name} frozenset assignment in tasks.py")
+
+    brace_start = text.find("{", assignment.end())
+    paren_close = text.find(")", assignment.end())
+    if brace_start == -1 or (paren_close != -1 and brace_start > paren_close):
+        raise RuntimeError(f"Cannot find opening brace for {set_name} in tasks.py")
+
+    brace_end = text.find("}", brace_start + 1)
+    if brace_end == -1:
+        raise RuntimeError(f"Cannot find closing brace for {set_name} in tasks.py")
+
+    body = text[brace_start + 1 : brace_end]
+    missing = [name for name in names if not re.search(rf"\b{re.escape(name)}\b", body)]
     if not missing:
         return text
+
     insertion = "".join(f"\n            {name}," for name in missing)
-    return text[: match.start("body")] + insertion + body + text[match.end("body") :]
+    return text[: brace_start + 1] + insertion + text[brace_start + 1 :]
 
 
 def _patch_tasks(tasks_py: Path) -> None:
