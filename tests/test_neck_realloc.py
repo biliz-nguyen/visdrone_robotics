@@ -47,8 +47,8 @@ def test_n2_yaml_moves_capacity_to_fine_scale(tmp_path: Path):
     path = build_model_yaml(_cfg(tmp_path))
     text = path.read_text(encoding="utf-8")
 
-    # Five standard C3k2 fusion blocks, no attention and no RepC3k2.
-    assert text.count("C3k2, [") >= 10  # backbone + five neck blocks
+    # Four C3k2 backbone blocks + five standard C3k2 neck fusion blocks.
+    assert text.count("C3k2, [") >= 9
     assert "RepC3k2" not in text
 
     # N2 nominal widths: P2=160 (+25%), P3=256, P4=384 (-25%).
@@ -57,9 +57,10 @@ def test_n2_yaml_moves_capacity_to_fine_scale(tmp_path: Path):
     assert text.count("C3k2, [160, false]") == 1
 
     # Bottom-up downsampling follows the reallocated output widths.
-    assert "Conv, [256, 3, 2]" in text
-    assert "Conv, [384, 3, 2]" in text
-    assert "Conv, [512, 3, 2]" not in text.split("head:", 1)[1]
+    head = text.split("head:", 1)[1]
+    assert "Conv, [256, 3, 2]" in head
+    assert "Conv, [384, 3, 2]" in head
+    assert "Conv, [512, 3, 2]" not in head
 
     # Detection scales stay P2/P3/P4 with the same layer topology.
     assert "[[19, 22, 25], 1, Detect, [nc]]" in text
