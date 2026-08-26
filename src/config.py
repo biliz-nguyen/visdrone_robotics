@@ -29,7 +29,7 @@ SPR_PLACEMENT_SET = set(SPR_PLACEMENT_ORDER)
 HEAD_MODES = {"standard", "stride_reg"}
 NECK_MODES = {"standard", "rep", "realloc"}
 N2_REALLOC_NOMINAL = {"p2": 160, "p3": 256, "p4": 384}
-N2B_REALLOC_NOMINAL = {"p2": 160, "p3": 256, "p4": 448}
+N2B_REALLOC_NOMINAL = {"p2": 160, "p3": 256, "p4": 416}
 ALLOWED_REALLOC_NOMINALS = (N2_REALLOC_NOMINAL, N2B_REALLOC_NOMINAL)
 
 
@@ -69,11 +69,12 @@ def normalize_head_bins(cfg: dict[str, Any]) -> list[int]:
 def normalize_neck_channels(cfg: dict[str, Any]) -> dict[str, int]:
     """Return nominal YAML widths for P2/P3/P4 neck outputs.
 
-    Reallocation screens are locked to two pre-registered hypotheses only:
+    Reallocation screens are locked to two hypotheses only:
     N2  = 160/256/384 (effective 40/64/96 at scale n), and
-    N2b = 160/256/448 (effective 40/64/112 at scale n).
-    This allows one targeted coarse-capacity recovery test without opening a
-    post-hoc channel sweep.
+    N2b = 160/256/416 (effective 40/64/104 at scale n).
+    The original N2b P4=448 preflight was rejected before training because it
+    exceeded the declared 1.03x-H1 FLOPs budget; 416 is the single
+    budget-constrained recovery setting used for the actual N2b screen.
     """
     if cfg.get("neck_mode", "standard") != "realloc":
         return {"p2": 128, "p3": 256, "p4": 512}
@@ -83,7 +84,7 @@ def normalize_neck_channels(cfg: dict[str, Any]) -> dict[str, int]:
     out = {k: int(raw[k]) for k in ("p2", "p3", "p4")}
     if out not in ALLOWED_REALLOC_NOMINALS:
         raise ValueError(
-            "Reallocation study is locked to pre-registered widths "
+            "Reallocation study is locked to registered widths "
             f"{list(ALLOWED_REALLOC_NOMINALS)}, got {out}"
         )
     return out
