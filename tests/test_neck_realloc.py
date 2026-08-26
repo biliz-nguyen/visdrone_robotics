@@ -29,16 +29,19 @@ def _cfg(tmp_path: Path, p4: int = 384) -> dict:
     }
 
 
-def test_only_preregistered_reallocations_are_allowed():
+def test_only_registered_reallocations_are_allowed():
     n2 = {"neck_mode": "realloc", "neck_channels_nominal": {"p2": 160, "p3": 256, "p4": 384}}
-    n2b = {"neck_mode": "realloc", "neck_channels_nominal": {"p2": 160, "p3": 256, "p4": 448}}
+    n2b = {"neck_mode": "realloc", "neck_channels_nominal": {"p2": 160, "p3": 256, "p4": 416}}
     assert normalize_neck_channels(n2) == {"p2": 160, "p3": 256, "p4": 384}
-    assert normalize_neck_channels(n2b) == {"p2": 160, "p3": 256, "p4": 448}
+    assert normalize_neck_channels(n2b) == {"p2": 160, "p3": 256, "p4": 416}
 
+    # 448 is intentionally rejected: its measured preflight was 6.2450 GFLOPs,
+    # above the fixed 1.03x-H1 deployment budget. Other unregistered widths are
+    # rejected too, preventing a post-hoc width sweep.
     for bad_widths in (
         {"p2": 192, "p3": 256, "p4": 384},
-        {"p2": 160, "p3": 320, "p4": 448},
-        {"p2": 160, "p3": 256, "p4": 416},
+        {"p2": 160, "p3": 320, "p4": 416},
+        {"p2": 160, "p3": 256, "p4": 448},
     ):
         with pytest.raises(ValueError):
             normalize_neck_channels({"neck_mode": "realloc", "neck_channels_nominal": bad_widths})
@@ -67,11 +70,12 @@ def test_n2_yaml_moves_capacity_to_fine_scale(tmp_path: Path):
     assert "Conv, [512, 3, 2]" not in head
 
 
-def test_n2b_yaml_restores_only_part_of_p4_capacity(tmp_path: Path):
-    text = build_model_yaml(_cfg(tmp_path, p4=448)).read_text(encoding="utf-8")
+def test_n2b_yaml_restores_budgeted_part_of_p4_capacity(tmp_path: Path):
+    text = build_model_yaml(_cfg(tmp_path, p4=416)).read_text(encoding="utf-8")
     _assert_common_yaml(text)
-    assert text.count("C3k2, [448, false]") == 2
+    assert text.count("C3k2, [416, false]") == 2
     head = text.split("head:", 1)[1]
     assert "Conv, [256, 3, 2]" in head
-    assert "Conv, [448, 3, 2]" in head
+    assert "Conv, [416, 3, 2]" in head
+    assert "Conv, [448, 3, 2]" not in head
     assert "Conv, [512, 3, 2]" not in head
