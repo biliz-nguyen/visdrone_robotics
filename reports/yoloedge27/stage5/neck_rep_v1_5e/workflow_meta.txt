@@ -1,0 +1,12 @@
+branch=research/yoloedge27-neck-rep-v1
+head=f4951b6372621128e87e24e30d70e4b4b4c2b17c
+screen_root=/home/minh/yoloedge27_experiments/stage5/neck_rep_v1_5e
+variant=N1 reparameterized fusion neck
+base=H1 direct reg1 with S1 SPR P4->P5
+epochs=5
+attention=none
+assignment=stock TAL
+deploy_parallel_branches=0 after analytical fusion
+deploy_gflops_budget=1.03x H1
+train_params_budget=1.20x H1
+note=local mechanism screening only
