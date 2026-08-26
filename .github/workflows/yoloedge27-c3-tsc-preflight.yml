@@ -45,7 +45,7 @@ jobs:
           grep -q 'tiny_min_side: 16.0' config/experiment.yaml
           grep -q 'gamma_floor: 0.5' config/experiment.yaml
           grep -q 'TinySupervisionCalibratedAssigner' src/tiny_supervision_calibration.py
-          grep -q 'Candidate ranking, selected positives' src/tiny_supervision_calibration.py
+          grep -q 'ranking, selected positives, conflicts and target boxes are unchanged' src/tiny_supervision_calibration.py
           "$PYTHON_BIN" -m py_compile \
             src/config.py \
             src/tiny_supervision_calibration.py \
