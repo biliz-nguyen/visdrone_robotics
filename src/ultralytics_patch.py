@@ -35,6 +35,7 @@ def patch_ultralytics(cfg: dict) -> None:
         project / "src" / "rep_neck.py": module_dir / "visdrone_rep_neck.py",
         project / "src" / "stride_reg_head.py": module_dir / "visdrone_stride_reg_head.py",
         project / "src" / "stride_reg_loss.py": utils_dir / "visdrone_stride_reg_loss.py",
+        project / "src" / "tiny_supervision_calibration.py": utils_dir / "visdrone_tiny_supervision.py",
     }
     for src, dst in copies.items():
         shutil.copy2(src, dst)
@@ -44,8 +45,57 @@ def patch_ultralytics(cfg: dict) -> None:
     if cfg["loss_mode"] != "standard":
         raise ValueError("Research branch supports standard loss only")
 
+    assigner_mode = cfg.get("assigner_mode", "standard")
+    if assigner_mode == "tiny_supervision":
+        _patch_tiny_supervision_assigner(loss_py, cfg)
+    elif assigner_mode != "standard":
+        raise ValueError(f"Unsupported assigner_mode={assigner_mode!r}")
+
     for path in [tasks_py, loss_py, *copies.values()]:
         compile(path.read_text(encoding="utf-8"), str(path), "exec")
+
+
+def _task_aligned_constructor() -> str:
+    """Exact constructor text in pinned Ultralytics v8.4.56 loss.py."""
+    return """        self.assigner = TaskAlignedAssigner(
+            topk=tal_topk,
+            num_classes=self.nc,
+            alpha=0.5,
+            beta=6.0,
+            stride=self.stride.tolist(),
+            topk2=tal_topk2,
+        )"""
+
+
+def _patch_tiny_supervision_assigner(loss_py: Path, cfg: dict) -> None:
+    """Replace only TAL's assigner object; inference graph remains unchanged."""
+    text = loss_py.read_text(encoding="utf-8")
+    import_line = (
+        "from ultralytics.utils.visdrone_tiny_supervision import "
+        "TinySupervisionCalibratedAssigner"
+    )
+    if import_line not in text:
+        anchor = "from ultralytics.utils.torch_utils import autocast\n"
+        if anchor not in text:
+            raise RuntimeError("Cannot find loss.py import anchor for C3/TSC")
+        text = text.replace(anchor, anchor + import_line + "\n", 1)
+
+    old = _task_aligned_constructor()
+    q = cfg["tiny_supervision"]
+    new = f"""        self.assigner = TinySupervisionCalibratedAssigner(
+            topk=tal_topk,
+            num_classes=self.nc,
+            alpha=0.5,
+            beta=6.0,
+            stride=self.stride.tolist(),
+            topk2=tal_topk2,
+            tiny_min_side={float(q['tiny_min_side'])},
+            gamma_floor={float(q['gamma_floor'])},
+        )"""
+    if old not in text:
+        raise RuntimeError("Cannot find TaskAlignedAssigner construction in loss.py for C3/TSC")
+    text = text.replace(old, new, 1)
+    loss_py.write_text(text, encoding="utf-8")
 
 
 def _insert_into_frozenset(text: str, set_name: str, names: list[str]) -> str:
@@ -53,7 +103,7 @@ def _insert_into_frozenset(text: str, set_name: str, names: list[str]) -> str:
 
     The pinned Ultralytics revision formats repeat_modules as
     ``frozenset(  # comment`` followed by the opening ``{`` on the next line.
-    A regex that assumes ``frozenset(\s*{`` is therefore brittle.  Locate the
+    A regex that assumes ``frozenset(\s*{`` is therefore brittle. Locate the
     assignment and its set braces structurally instead, while still keeping the
     patch deliberately narrow to the requested named set.
     """
@@ -100,10 +150,6 @@ def _patch_tasks(tasks_py: Path) -> None:
         ["SPRDown", "AConv", "ECA", "CoordAtt", "ResidualLiteCA", "RepC3k2"],
     )
 
-    # RepC3k2 mirrors the stock C3k2 constructor. Register it as a repeat
-    # module so parse_model applies the same depth multiplier and inserts the
-    # scaled internal repeat count at args[2]. This is essential for a fair
-    # N1 comparison; otherwise an explicit n bypasses scale=n depth scaling.
     text = _insert_into_frozenset(text, "repeat_modules", ["RepC3k2"])
 
     parse_anchor = (
