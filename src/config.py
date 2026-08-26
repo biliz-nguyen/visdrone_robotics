@@ -27,6 +27,7 @@ CLASS_NAMES = [
 SPR_PLACEMENT_ORDER = ("p2_p3", "p3_p4", "p4_p5")
 SPR_PLACEMENT_SET = set(SPR_PLACEMENT_ORDER)
 HEAD_MODES = {"standard", "stride_reg"}
+NECK_MODES = {"standard", "rep"}
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -91,6 +92,7 @@ def load_config(
     resolved["spr_placements"] = normalize_spr_placements(resolved)
     resolved["head_mode"] = resolved.get("head_mode", "standard")
     resolved["head_reg_bins"] = normalize_head_bins(resolved)
+    resolved["neck_mode"] = resolved.get("neck_mode", "standard")
     resolved["study"] = resolved.get("study", "placement")
 
     resolved["dataset_root"] = str(Path(local["dataset_root"]).expanduser().resolve())
@@ -132,6 +134,8 @@ def _validate(cfg: dict[str, Any]) -> None:
         raise ValueError(cfg["reg_max"])
     if cfg.get("head_mode", "standard") not in HEAD_MODES:
         raise ValueError(cfg.get("head_mode"))
+    if cfg.get("neck_mode", "standard") not in NECK_MODES:
+        raise ValueError(cfg.get("neck_mode"))
     if cfg.get("dataset_format") not in {"visdrone_official", "yolo"}:
         raise ValueError("dataset_format must be 'visdrone_official' or 'yolo'")
     if cfg.get("pretrained", False):
@@ -147,6 +151,7 @@ def _validate(cfg: dict[str, Any]) -> None:
 
     study = cfg.get("study", "placement")
     head_mode = cfg.get("head_mode", "standard")
+    neck_mode = cfg.get("neck_mode", "standard")
 
     if study == "placement":
         if placements:
@@ -158,12 +163,16 @@ def _validate(cfg: dict[str, Any]) -> None:
                 raise ValueError("SPR placement screening must keep reg_max=16")
             if head_mode != "standard":
                 raise ValueError("SPR placement screening must keep the standard Detect head")
+        if neck_mode != "standard":
+            raise ValueError("Placement study must keep the standard neck")
 
     elif study == "head":
         if placements != ["p4_p5"]:
             raise ValueError("Head study is locked to the confirmed S1 SPR placement P4->P5")
         if cfg["loss_mode"] != "standard" or cfg["attention"] != "none":
             raise ValueError("Head study must keep standard loss and no attention")
+        if neck_mode != "standard":
+            raise ValueError("Head study must keep the standard neck")
         if head_mode == "stride_reg":
             bins = normalize_head_bins(cfg)
             if len(bins) != 3:
@@ -174,6 +183,16 @@ def _validate(cfg: dict[str, Any]) -> None:
                 raise ValueError("head_reg_bins must be non-increasing from P2 to P4")
         elif int(cfg["reg_max"]) != 1:
             raise ValueError("Standard-head variant in the head study is reserved for the DFL-free reg_max=1 control")
+
+    elif study == "neck":
+        if placements != ["p4_p5"]:
+            raise ValueError("Neck study is locked to the confirmed S1 SPR placement P4->P5")
+        if cfg["loss_mode"] != "standard" or cfg["attention"] != "none":
+            raise ValueError("Neck study must keep standard loss and no attention")
+        if head_mode != "standard" or int(cfg["reg_max"]) != 1:
+            raise ValueError("Neck study is locked to H1 direct reg_max=1 head")
+        if neck_mode not in NECK_MODES:
+            raise ValueError(f"Unknown neck_mode={neck_mode!r}")
     else:
         raise ValueError(f"Unknown study={study!r}")
 
@@ -194,7 +213,8 @@ def experiment_tag(cfg: dict[str, Any]) -> str:
     else:
         arch_tag = cfg["backbone_down"]
 
-    if cfg.get("study", "placement") == "head":
+    study = cfg.get("study", "placement")
+    if study == "head":
         if cfg.get("head_mode") == "stride_reg":
             bins = "-".join(str(x) for x in normalize_head_bins(cfg))
             head_tag = f"snr-{bins}"
@@ -202,6 +222,13 @@ def experiment_tag(cfg: dict[str, Any]) -> str:
             head_tag = "direct-r1"
         return (
             f"{arch_tag}_{head_tag}_{loss_tag}_attn-{cfg['attention']}_"
+            f"{int(cfg['train']['epochs'])}e_seed{int(cfg['seed'])}"
+        )
+
+    if study == "neck":
+        neck_tag = "repneck" if cfg.get("neck_mode") == "rep" else "stdneck"
+        return (
+            f"{arch_tag}_{neck_tag}_direct-r1_{loss_tag}_attn-{cfg['attention']}_"
             f"{int(cfg['train']['epochs'])}e_seed{int(cfg['seed'])}"
         )
 
