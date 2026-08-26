@@ -155,8 +155,8 @@ def main() -> int:
         required = [
             "Neck mode: realloc",
             "RepC3k2 count: 0",
-            "Neck nominal channels P2/P3/P4: {'p2': 160, 'p3': 256, 'p4': 448}",
-            "Neck effective channels P2/P3/P4: {'p2': 40, 'p3': 64, 'p4': 112}",
+            "Neck nominal channels P2/P3/P4: {'p2': 160, 'p3': 256, 'p4': 416}",
+            "Neck effective channels P2/P3/P4: {'p2': 40, 'p3': 64, 'p4': 104}",
             "Assigner: TaskAlignedAssigner",
             "Regression bins P2/P3/P4: [1, 1, 1]",
         ]
@@ -187,8 +187,8 @@ pan_down = {
     'p2_p3': int(seq[20].conv.out_channels),
     'p3_p4': int(seq[23].conv.out_channels),
 }
-assert neck == {'p2': 40, 'p3': 64, 'p4': 112}, neck
-assert pan_down == {'p2_p3': 64, 'p3_p4': 112}, pan_down
+assert neck == {'p2': 40, 'p3': 64, 'p4': 104}, neck
+assert pan_down == {'p2_p3': 64, 'p3_p4': 104}, pan_down
 params = sum(p.numel() for p in m.parameters())
 x = torch.randn(1, 3, int(cfg['train']['imgsz']), int(cfg['train']['imgsz']))
 with torch.no_grad():
@@ -241,13 +241,13 @@ print('N2B_PROBE_JSON=' + json.dumps(payload, sort_keys=True))
 
         n2b = {
             "id": "N2b",
-            "description": "N2 fine-scale neck with partial P4 capacity restored",
+            "description": "N2 fine-scale neck with budgeted P4 capacity restored",
             "status": "complete",
             "allocation": {
                 "h1_nominal": {"p2": 128, "p3": 256, "p4": 512},
                 "n2_nominal": {"p2": 160, "p3": 256, "p4": 384},
-                "n2b_nominal": {"p2": 160, "p3": 256, "p4": 448},
-                "relative_vs_h1": {"p2": "+25%", "p3": "0%", "p4": "-12.5%"},
+                "n2b_nominal": {"p2": 160, "p3": 256, "p4": 416},
+                "relative_vs_h1": {"p2": "+25%", "p3": "0%", "p4": "-18.75%"},
                 "effective": probe["neck_effective"],
                 "pan_down_effective": probe["pan_down_effective"],
             },
@@ -287,13 +287,13 @@ print('N2B_PROBE_JSON=' + json.dumps(payload, sort_keys=True))
         )
 
         summary = {
-            "purpose": "N2b targeted moderate fine-scale neck reallocation local 5e screen; not final paper evidence.",
+            "purpose": "N2b targeted budget-constrained fine-scale neck reallocation local 5e screen; not final paper evidence.",
             "novelty_status": "targeted capacity-allocation follow-up; no novelty claim from one width setting",
             "mechanism": {
-                "name": "N2b Moderate Fine-Scale Capacity Reallocation",
+                "name": "N2b Budget-Constrained Fine-Scale Capacity Reallocation",
                 "base": "H1: S1 SPR P4->P5 + direct reg_max=1",
                 "changed_scope": "PAN/FPN widths only; standard C3k2 retained",
-                "rationale": "retain N2 P2 boost but restore half of the P4 capacity removed by N2 to recover localization while preserving tiny-object gains",
+                "rationale": "retain N2 P2 boost but restore one quarter of the P4 capacity removed by N2; P4=448 was rejected pre-training for exceeding the fixed FLOPs budget",
                 "attention": "none",
                 "assignment": "stock TaskAlignedAssigner",
                 "loss": "standard",
@@ -309,7 +309,7 @@ print('N2B_PROBE_JSON=' + json.dumps(payload, sort_keys=True))
                 "max_gflops_ratio_vs_h1": float(args.max_gflops_ratio),
                 "max_params_ratio_vs_h1": float(args.max_params_ratio),
                 "widths_locked_before_training": True,
-                "single_followup_after_n2": True,
+                "p4_448_rejected_pretraining": True,
             },
             "controls": controls,
             "N1_reference": n1_prior,
