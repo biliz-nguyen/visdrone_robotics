@@ -55,43 +55,59 @@ class ConvBNAct(nn.Module):
 
 
 class RepConvUnit(nn.Module):
-    """RepVGG-style 3x3/1x1/identity training block fused to one 3x3 conv."""
+    """Train-rich 3x3/1x1 convolution fused to one 3x3 at deployment.
 
-    def __init__(self, channels: int, act: bool = True):
+    An identity-BN branch is used only when input/output channels are equal.
+    The asymmetric form is important for matching Ultralytics C3k2 exactly:
+    its internal Bottleneck uses e=0.5, so the first 3x3 maps c -> c/2.
+    """
+
+    def __init__(self, c1: int, c2: int | None = None, act: bool = True):
         super().__init__()
-        c = int(channels)
-        self.channels = c
+        c1 = int(c1)
+        c2 = c1 if c2 is None else int(c2)
+        self.in_channels = c1
+        self.out_channels = c2
         self.rbr_dense = nn.Sequential(
-            nn.Conv2d(c, c, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(c),
+            nn.Conv2d(c1, c2, 3, 1, 1, bias=False),
+            nn.BatchNorm2d(c2),
         )
         self.rbr_1x1 = nn.Sequential(
-            nn.Conv2d(c, c, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(c),
+            nn.Conv2d(c1, c2, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(c2),
         )
-        self.rbr_identity = nn.BatchNorm2d(c)
+        self.rbr_identity = nn.BatchNorm2d(c1) if c1 == c2 else None
         self.act = nn.SiLU(inplace=True) if act else nn.Identity()
         self.deploy = False
 
     def forward(self, x):
         if self.deploy:
             return self.act(self.reparam(x))
-        return self.act(self.rbr_dense(x) + self.rbr_1x1(x) + self.rbr_identity(x))
+        y = self.rbr_dense(x) + self.rbr_1x1(x)
+        if self.rbr_identity is not None:
+            y = y + self.rbr_identity(x)
+        return self.act(y)
 
-    @staticmethod
-    def _fuse_branch(branch):
+    def _zero_kernel_bias(self):
+        ref = self.rbr_dense[0].weight
+        kernel = torch.zeros(
+            (self.out_channels, self.in_channels, 3, 3),
+            device=ref.device,
+            dtype=ref.dtype,
+        )
+        bias = torch.zeros(self.out_channels, device=ref.device, dtype=ref.dtype)
+        return kernel, bias
+
+    def _fuse_branch(self, branch):
+        if branch is None:
+            return self._zero_kernel_bias()
         if isinstance(branch, nn.Sequential):
             conv, bn = branch[0], branch[1]
             kernel = conv.weight
         else:
             bn = branch
-            c = bn.num_features
-            kernel = torch.zeros(
-                (c, c, 3, 3),
-                device=bn.weight.device,
-                dtype=bn.weight.dtype,
-            )
-            idx = torch.arange(c, device=bn.weight.device)
+            kernel, _ = self._zero_kernel_bias()
+            idx = torch.arange(self.in_channels, device=bn.weight.device)
             kernel[idx, idx, 1, 1] = 1.0
 
         gamma = bn.weight
@@ -114,8 +130,8 @@ class RepConvUnit(nn.Module):
             return self
         kernel, bias = self.get_equivalent_kernel_bias()
         self.reparam = nn.Conv2d(
-            self.channels,
-            self.channels,
+            self.in_channels,
+            self.out_channels,
             3,
             1,
             1,
@@ -125,19 +141,27 @@ class RepConvUnit(nn.Module):
         self.reparam.bias.data.copy_(bias)
         del self.rbr_dense
         del self.rbr_1x1
-        del self.rbr_identity
+        if self.rbr_identity is not None:
+            del self.rbr_identity
         self.deploy = True
         return self
 
 
 class RepBottleneck(nn.Module):
-    """C3k2-compatible bottleneck with one train-rich reparameterized 3x3."""
+    """Stock-C3k2-compatible bottleneck with a train-rich first 3x3.
 
-    def __init__(self, channels: int, shortcut: bool = True):
+    Ultralytics C3k2(c3k=False) calls Bottleneck(self.c, self.c) with the
+    Bottleneck default e=0.5. Therefore the deploy path must be
+    c -> c/2 (3x3) -> c (3x3), not c -> c -> c. The extra 1x1 branch exists
+    only during training and fuses into the first 3x3 for deployment.
+    """
+
+    def __init__(self, channels: int, shortcut: bool = True, e: float = 0.5):
         super().__init__()
         c = int(channels)
-        self.cv1 = RepConvUnit(c)
-        self.cv2 = ConvBNAct(c, c, 3, 1, act=True)
+        c_mid = max(1, int(c * float(e)))
+        self.cv1 = RepConvUnit(c, c_mid)
+        self.cv2 = ConvBNAct(c_mid, c, 3, 1, act=True)
         self.add = bool(shortcut)
 
     def forward(self, x):
@@ -155,9 +179,10 @@ class RepC3k2(nn.Module):
 
     Its constructor mirrors Ultralytics C3k2 so the model parser applies the
     same width/depth scaling as the control. N1 supports only the plain
-    C3k2(c3k=False, attn=False) path used by the PAN/FPN neck. Training adds
-    1x1 and identity branches to the first 3x3 of each bottleneck; deployment
-    analytically fuses them back into that single 3x3.
+    C3k2(c3k=False, attn=False) path used by the PAN/FPN neck. Training adds a
+    parallel 1x1 branch to the first 3x3 of each bottleneck; deployment
+    analytically fuses it back into that single 3x3. The deploy bottleneck
+    width matches stock C3k2 exactly (internal Bottleneck e=0.5).
     """
 
     def __init__(
@@ -187,7 +212,7 @@ class RepC3k2(nn.Module):
         self.n = int(n)
         self.hidden = hidden
         self.cv1 = ConvBNAct(self.c1, 2 * hidden, 1, 1, act=True)
-        self.m = nn.ModuleList(RepBottleneck(hidden, shortcut=shortcut) for _ in range(self.n))
+        self.m = nn.ModuleList(RepBottleneck(hidden, shortcut=shortcut, e=0.5) for _ in range(self.n))
         self.cv2 = ConvBNAct((2 + self.n) * hidden, self.c2, 1, 1, act=True)
         self.deploy = False
 
