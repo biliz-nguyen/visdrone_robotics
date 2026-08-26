@@ -1,0 +1,4 @@
+training_best_pt=/home/minh/yoloedge27_experiments/stage5/neck_rep_v1_5e/runs/spr-p4p5_repneck_direct-r1_standard_attn-none_5e_seed42/weights/best.pt
+deploy_best_pt=/home/minh/yoloedge27_experiments/stage5/neck_rep_v1_5e/deploy/best_deploy.pt
+results_csv=/home/minh/yoloedge27_experiments/stage5/neck_rep_v1_5e/runs/spr-p4p5_repneck_direct-r1_standard_attn-none_5e_seed42/results.csv
+control_summary=/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage3/head_snr_v1_5e/summary.json

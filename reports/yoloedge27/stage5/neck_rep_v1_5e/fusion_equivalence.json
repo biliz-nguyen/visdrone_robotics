@@ -1,0 +1,11 @@
+{
+  "converted_keys": [
+    "model"
+  ],
+  "input_weights": "/home/minh/yoloedge27_experiments/stage5/neck_rep_v1_5e/runs/spr-p4p5_repneck_direct-r1_standard_attn-none_5e_seed42/weights/best.pt",
+  "max_abs_diff_after_reload": 0.0,
+  "max_abs_diff_pre_post_fusion": 0.0001220703125,
+  "output_weights": "/home/minh/yoloedge27_experiments/stage5/neck_rep_v1_5e/deploy/best_deploy.pt",
+  "rep_blocks": 5,
+  "tolerance": 0.0005
+}
