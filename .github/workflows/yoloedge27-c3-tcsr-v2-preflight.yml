@@ -1,0 +1,113 @@
+name: YOLOEdge27 C3 TCSR v2 Preflight
+
+on:
+  push:
+    branches:
+      - research/yoloedge27-c3-tinyopt-v2
+    paths:
+      - .github/workflows/yoloedge27-c3-tcsr-v2-preflight.yml
+      - config/experiment.yaml
+      - src/config.py
+      - src/tiny_center_stable_rank.py
+      - src/ultralytics_patch.py
+      - scripts/sanity.py
+      - tests/test_tiny_center_stable_rank.py
+  workflow_dispatch:
+
+concurrency:
+  group: yoloedge27-c3-tcsr-v2-preflight
+  cancel-in-progress: true
+
+jobs:
+  c3-v2-preflight:
+    runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
+    timeout-minutes: 30
+    env:
+      PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
+      DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
+      TMP_ROOT: /home/minh/yoloedge27_experiments/stage11/c3_tcsr_v2_preflight
+      PYTHONPATH: ${{ github.workspace }}/third_party/ultralytics:${{ github.workspace }}
+
+    steps:
+      - name: Checkout C3-v2 research branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/yoloedge27-c3-tinyopt-v2
+          fetch-depth: 0
+
+      - name: Verify frozen C1+C2 plus TCSR mechanism
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'preset: "edge27_c3_tcsr_v2"' config/experiment.yaml
+          grep -q 'study: "optimization"' config/experiment.yaml
+          grep -q 'assigner_mode: "tiny_center_rank"' config/experiment.yaml
+          grep -q 'p4: 416' config/experiment.yaml
+          grep -q 'tiny_min_side: 16.0' config/experiment.yaml
+          grep -q 'class TinyCenterStableRankAssigner' src/tiny_center_stable_rank.py
+          grep -q 'only changed decision is which candidates enter the top-k set' src/tiny_center_stable_rank.py
+          "$PYTHON_BIN" -m py_compile \
+            src/config.py \
+            src/tiny_center_stable_rank.py \
+            src/ultralytics_patch.py \
+            scripts/sanity.py \
+            tests/test_tiny_center_stable_rank.py
+
+      - name: Bootstrap runner-local config
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$TMP_ROOT"
+          mkdir -p "$TMP_ROOT"
+          cat > config/local.yaml <<EOF
+          dataset_root: "$DATASET"
+          dataset_format: "visdrone_official"
+          train_images: "VisDrone2019-DET-train/images"
+          train_annotations: "VisDrone2019-DET-train/annotations"
+          val_images: "VisDrone2019-DET-val/images"
+          val_annotations: "VisDrone2019-DET-val/annotations"
+          test_images: "VisDrone2019-DET-test-dev/images"
+          test_annotations: "VisDrone2019-DET-test-dev/annotations"
+          test_image: ""
+          runs_dir: "$TMP_ROOT/runs"
+          state_dir: "$TMP_ROOT/state"
+          outputs_dir: "$TMP_ROOT/outputs"
+          generated_dir: "$TMP_ROOT/generated"
+          EOF
+
+      - name: Setup pinned dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON_BIN="$PYTHON_BIN" bash setup_local.sh
+          "$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import ultralytics
+          expected = (Path.cwd() / 'third_party' / 'ultralytics').resolve()
+          print('Ultralytics:', ultralytics.__version__)
+          print('Source:', ultralytics.__file__)
+          assert Path(ultralytics.__file__).resolve().is_relative_to(expected)
+          PY
+
+      - name: Unit tests
+        shell: bash
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" -m pytest -q \
+            tests/test_sprdown.py \
+            tests/test_neck_realloc.py \
+            tests/test_tiny_center_stable_rank.py
+
+      - name: Architecture and patch sanity
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/sanity.py | tee /tmp/c3_v2_sanity.txt
+          grep -q 'Assigner: TinyCenterStableRankAssigner' /tmp/c3_v2_sanity.txt
+          grep -q 'Params: 1,454,374' /tmp/c3_v2_sanity.txt
+          grep -q 'GFLOPs: 6.1555' /tmp/c3_v2_sanity.txt
+          LOSS=third_party/ultralytics/ultralytics/utils/loss.py
+          grep -q 'TinyCenterStableRankAssigner' "$LOSS"
+          echo 'C3-v2 preflight passed: TCSR is training-only and N2b inference complexity is unchanged.'
