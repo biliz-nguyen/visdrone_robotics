@@ -1,0 +1,203 @@
+name: YOLOEdge27 N2b Neck Reallocation 50e
+
+on:
+  push:
+    branches:
+      - research/yoloedge27-neck-realloc-v2-50e
+    paths:
+      - .github/workflows/yoloedge27-neck-realloc-v2-50e.yml
+  workflow_dispatch:
+
+concurrency:
+  group: yoloedge27-neck-realloc-v2-50e
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  neck-realloc-n2b-50e:
+    runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
+    timeout-minutes: 360
+    env:
+      CUDA_VISIBLE_DEVICES: "0"
+      PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
+      DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
+      SCREEN_ROOT: /home/minh/yoloedge27_experiments/stage8/neck_realloc_v2_50e
+      REPORT_DIR: reports/yoloedge27/stage8/neck_realloc_v2_50e
+      PYTHONPATH: ${{ github.workspace }}/third_party/ultralytics:${{ github.workspace }}
+
+    steps:
+      - name: Checkout N2b 50e research branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/yoloedge27-neck-realloc-v2-50e
+          fetch-depth: 0
+
+      - name: Verify frozen N2b mechanism
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "HEAD=$(git rev-parse HEAD)"
+          git log -1 --oneline
+          grep -q 'edge27_neck_realloc_v2' config/experiment.yaml
+          grep -q 'p4: 416' config/experiment.yaml
+          grep -q 'N2B_REALLOC_NOMINAL' src/config.py
+          grep -q "'p4': 104" scripts/run_neck_realloc_test.py
+          test -f reports/yoloedge27/stage7/neck_realloc_v2_5e/summary.json
+          "$PYTHON_BIN" -m py_compile src/config.py src/model_builder.py scripts/sanity.py scripts/run_neck_realloc_test.py tests/test_neck_realloc.py
+
+      - name: Pre-flight GPU and dataset
+        shell: bash
+        run: |
+          set -euo pipefail
+          nvidia-smi
+          "$PYTHON_BIN" - <<'PY'
+          import torch
+          print('Torch:', torch.__version__)
+          print('CUDA:', torch.version.cuda)
+          print('CUDA available:', torch.cuda.is_available())
+          assert torch.cuda.is_available()
+          print('GPU:', torch.cuda.get_device_name(0))
+          PY
+          test -d "$DATASET/VisDrone2019-DET-train/images"
+          test -d "$DATASET/VisDrone2019-DET-val/images"
+
+      - name: Bootstrap local config
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$SCREEN_ROOT"
+          mkdir -p "$SCREEN_ROOT" "$REPORT_DIR"
+          cat > config/local.yaml <<EOF
+          dataset_root: "$DATASET"
+          dataset_format: "visdrone_official"
+          train_images: "VisDrone2019-DET-train/images"
+          train_annotations: "VisDrone2019-DET-train/annotations"
+          val_images: "VisDrone2019-DET-val/images"
+          val_annotations: "VisDrone2019-DET-val/annotations"
+          test_images: "VisDrone2019-DET-test-dev/images"
+          test_annotations: "VisDrone2019-DET-test-dev/annotations"
+          test_image: ""
+          runs_dir: "$SCREEN_ROOT/runs"
+          state_dir: "$SCREEN_ROOT/state"
+          outputs_dir: "$SCREEN_ROOT/outputs"
+          generated_dir: "$SCREEN_ROOT/generated"
+          EOF
+
+      - name: Setup pinned dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON_BIN="$PYTHON_BIN" bash setup_local.sh
+          "$PYTHON_BIN" - <<'PY'
+          from pathlib import Path
+          import ultralytics
+          expected = (Path.cwd() / 'third_party' / 'ultralytics').resolve()
+          print('Ultralytics:', ultralytics.__version__)
+          print('Source:', ultralytics.__file__)
+          assert Path(ultralytics.__file__).resolve().is_relative_to(expected)
+          PY
+
+      - name: Unit tests
+        shell: bash
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" -m pytest -q tests/test_sprdown.py tests/test_neck_realloc.py
+
+      - name: Train and evaluate frozen N2b 50e
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/run_neck_realloc_test.py \
+            --dataset "$DATASET" \
+            --screen-root "$SCREEN_ROOT" \
+            --report-dir "$REPORT_DIR" \
+            --epochs 50 \
+            --batch 8 \
+            --nbs 16 \
+            --workers 4 \
+            --max-gflops-ratio 1.03 \
+            --max-params-ratio 1.10
+
+      - name: Normalize 50e report metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = Path("reports/yoloedge27/stage8/neck_realloc_v2_50e")
+          summary_path = report / "summary.json"
+          data = json.loads(summary_path.read_text(encoding="utf-8"))
+
+          n2b = data.get("N2b", {})
+          if "epoch5" in n2b:
+              n2b["epoch50"] = n2b.pop("epoch5")
+
+          data["purpose"] = "N2b frozen neck reallocation local 50e convergence screen; not final paper evidence."
+          data["protocol"]["epochs"] = 50
+          data["promotion"] = {
+              "promote_to_longer_run": None,
+              "rule": "Not assessed here because an H1 50e control has not yet been run under the same protocol."
+          }
+          data["comparison_validity"] = {
+              "N2b_5e": "same mechanism, useful only as convergence context",
+              "H1_5e": "cross-epoch reference only; not a fair 50e ablation control",
+              "N1_5e": "cross-epoch reference only",
+              "N2_5e": "cross-epoch reference only"
+          }
+          data["caution"] = "single local seed, deterministic=false, 50 epochs; fair neck attribution still requires H1 50e under the same protocol."
+          summary_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+          old_eval = report / "neck_realloc_v2_5e_eval.json"
+          new_eval = report / "neck_realloc_v2_50e_eval.json"
+          if old_eval.exists():
+              old_eval.replace(new_eval)
+
+          paths = report / "paths.txt"
+          if paths.exists():
+              text = paths.read_text(encoding="utf-8").replace("neck_realloc_v2_5e_eval.json", "neck_realloc_v2_50e_eval.json")
+              paths.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Commit compact N2b 50e reports
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$REPORT_DIR"
+          {
+            echo "branch=research/yoloedge27-neck-realloc-v2-50e"
+            echo "head=$(git rev-parse HEAD)"
+            echo "screen_root=$SCREEN_ROOT"
+            echo "variant=N2b frozen fine-scale neck reallocation"
+            echo "base=S1 SPR P4->P5 + H1 direct reg1 design"
+            echo "nominal_neck=P2:160 P3:256 P4:416"
+            echo "effective_neck=P2:40 P3:64 P4:104"
+            echo "epochs=50"
+            echo "seed=42"
+            echo "pretrained=false"
+            echo "attention=none"
+            echo "assignment=stock TAL"
+            echo "reparameterization=none"
+            echo "gflops_budget=1.03x H1"
+            echo "params_budget=1.10x H1"
+            echo "note=local convergence screen; H1 50e control still required for fair neck attribution"
+          } > "$REPORT_DIR/workflow_meta.txt"
+
+          git checkout -- config/experiment.yaml || true
+          git status --short
+          git config user.name "yoloedge27-runner"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$REPORT_DIR"
+          if git diff --cached --quiet; then
+            echo "No N2b 50e report changes to commit"
+            exit 0
+          fi
+          git commit -m "Record N2b 50e convergence screen"
+          git pull --rebase origin research/yoloedge27-neck-realloc-v2-50e
+          git push origin HEAD:research/yoloedge27-neck-realloc-v2-50e
