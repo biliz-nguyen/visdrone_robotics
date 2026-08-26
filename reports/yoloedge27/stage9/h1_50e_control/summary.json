@@ -1,0 +1,139 @@
+{
+  "purpose": "Fair local 50e H1 control for the N2b neck-reallocation convergence comparison; not final paper evidence.",
+  "protocol": {
+    "epochs": 50,
+    "batch": 8,
+    "nbs": 16,
+    "workers": 4,
+    "imgsz": 640,
+    "seed": 42,
+    "pretrained": false,
+    "optimizer": "AdamW",
+    "lr0": 0.0015,
+    "lrf": 0.05,
+    "weight_decay": 0.05,
+    "attention": "none",
+    "assigner": "stock TaskAlignedAssigner",
+    "loss": "standard",
+    "test_dev_used": false
+  },
+  "H1": {
+    "id": "H1-50e",
+    "preset": "edge27_head_direct_r1",
+    "description": "S1 SPR P4->P5 + stock Detect reg_max=1 / DFL-free + standard neck",
+    "complexity": {
+      "params": 1523322,
+      "gflops": 6.0501
+    },
+    "epoch50": {
+      "precision": 0.4085,
+      "recall": 0.31351,
+      "map50": 0.29156,
+      "map50_95": 0.16255
+    },
+    "best_eval": {
+      "precision": 0.4085669479313488,
+      "recall": 0.3141590653941518,
+      "map50": 0.29238662777942326,
+      "map50_95": 0.1630083431717712
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.38769867216132786,
+        "recall": 0.4030981456354591,
+        "map50": 0.3481850060674092,
+        "map50_95": 0.1452772838020085
+      },
+      "people": {
+        "precision": 0.45260574381117613,
+        "recall": 0.2735609756097561,
+        "map50": 0.26784071600765186,
+        "map50_95": 0.09560742121454655
+      }
+    },
+    "speed_ms_best_eval": {
+      "preprocess": 0.15963103467676945,
+      "inference": 1.1792253941684379,
+      "loss": 0.0004862755423698092,
+      "postprocess": 1.3529532426836186
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage9/h1_50e_control/runs/spr-p4p5_direct-r1_standard_attn-none_50e_seed42/weights/best.pt"
+  },
+  "N2b_reference": {
+    "id": "N2b-50e",
+    "complexity": {
+      "assigner": "TaskAlignedAssigner",
+      "gflops": 6.15552,
+      "head": "Detect",
+      "neck_effective": {
+        "p2": 40,
+        "p3": 64,
+        "p4": 104
+      },
+      "pan_down_effective": {
+        "p2_p3": 64,
+        "p3_p4": 104
+      },
+      "params": 1454374,
+      "reg_max": 1
+    },
+    "best_eval": {
+      "precision": 0.41648810061689334,
+      "recall": 0.3193310551073031,
+      "map50": 0.29983656796601904,
+      "map50_95": 0.16755634837022165
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.3910670909748432,
+        "recall": 0.40004225253948855,
+        "map50": 0.3500427893861443,
+        "map50_95": 0.14691453462730616
+      },
+      "people": {
+        "precision": 0.4582625593305025,
+        "recall": 0.27366307734604073,
+        "map50": 0.2662296749611897,
+        "map50_95": 0.09268904988345197
+      }
+    },
+    "speed_ms_best_eval": {
+      "preprocess": 0.1513607518216198,
+      "inference": 1.3215581386885542,
+      "loss": 0.00046107846300115973,
+      "postprocess": 1.3003844215234455
+    },
+    "source_eval": "/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage8/neck_realloc_v2_50e/neck_realloc_v2_50e_eval.json"
+  },
+  "comparison": {
+    "delta_n2b_minus_h1": {
+      "precision": 0.007921152685544552,
+      "recall": 0.005171989713151304,
+      "map50": 0.007449940186595783,
+      "map50_95": 0.004548005198450444
+    },
+    "delta_focus_n2b_minus_h1": {
+      "pedestrian": {
+        "precision": 0.0033684188135153503,
+        "recall": -0.003055893095970541,
+        "map50": 0.0018577833187350956,
+        "map50_95": 0.0016372508252976703
+      },
+      "people": {
+        "precision": 0.005656815519326341,
+        "recall": 0.00010210173628460995,
+        "map50": -0.0016110410464621472,
+        "map50_95": -0.0029183713310945714
+      }
+    },
+    "params_delta_n2b_minus_h1": -68948,
+    "params_ratio_n2b_vs_h1": 0.9547383941149672,
+    "gflops_delta_n2b_minus_h1": 0.10542000000000051,
+    "gflops_ratio_n2b_vs_h1": 1.0174245053800763
+  },
+  "caution": "single local seed and deterministic=false; final paper evidence requires locked Kaggle confirmation and ideally multiple seeds."
+}

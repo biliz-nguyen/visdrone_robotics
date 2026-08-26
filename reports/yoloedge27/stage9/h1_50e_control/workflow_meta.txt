@@ -1,0 +1,13 @@
+branch=research/yoloedge27-h1-50e-control
+head=7dcc2a37443a044a577fe7545272037234060de1
+screen_root=/home/minh/yoloedge27_experiments/stage9/h1_50e_control
+variant=H1 standard neck direct reg1 fair 50e control
+base=S1 SPR P4->P5
+neck=standard P2:128 P3:256 P4:512 nominal
+reg_max=1
+epochs=50
+seed=42
+pretrained=false
+attention=none
+assignment=stock TAL
+note=local same-protocol control for N2b 50e; no test-dev evaluation
