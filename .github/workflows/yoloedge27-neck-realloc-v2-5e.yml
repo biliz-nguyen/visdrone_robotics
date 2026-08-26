@@ -47,11 +47,11 @@ jobs:
           echo "HEAD=$(git rev-parse HEAD)"
           git log -1 --oneline
           grep -q 'edge27_neck_realloc_v2' config/experiment.yaml
-          grep -q 'p4: 448' config/experiment.yaml
+          grep -q 'p4: 416' config/experiment.yaml
           grep -q 'N2B_REALLOC_NOMINAL' src/config.py
           grep -q 'N2B_PROBE_JSON=' scripts/run_neck_realloc_test.py
-          grep -q "'p4': 112" scripts/run_neck_realloc_test.py
-          grep -q 'test_n2b_yaml_restores_only_part_of_p4_capacity' tests/test_neck_realloc.py
+          grep -q "'p4': 104" scripts/run_neck_realloc_test.py
+          grep -q 'test_n2b_yaml_restores_budgeted_part_of_p4_capacity' tests/test_neck_realloc.py
           test -f reports/yoloedge27/stage3/head_snr_v1_5e/summary.json
           test -f reports/yoloedge27/stage6/neck_realloc_v1_5e/summary.json
           "$PYTHON_BIN" -m py_compile \
@@ -148,17 +148,17 @@ jobs:
             echo "branch=research/yoloedge27-neck-realloc-v2"
             echo "head=$(git rev-parse HEAD)"
             echo "screen_root=$SCREEN_ROOT"
-            echo "variant=N2b moderate fine-scale neck reallocation"
+            echo "variant=N2b budget-constrained fine-scale neck reallocation"
             echo "base=H1 direct reg1 with S1 SPR P4->P5"
-            echo "nominal_neck=P2:160 P3:256 P4:448"
-            echo "effective_neck=P2:40 P3:64 P4:112"
+            echo "nominal_neck=P2:160 P3:256 P4:416"
+            echo "effective_neck=P2:40 P3:64 P4:104"
             echo "epochs=5"
             echo "attention=none"
             echo "assignment=stock TAL"
             echo "reparameterization=none"
             echo "gflops_budget=1.03x H1"
             echo "params_budget=1.10x H1"
-            echo "note=single targeted follow-up after N2; local mechanism screening only"
+            echo "note=P4:448 rejected in preflight; 416 is the single budget-constrained recovery setting"
           } > "$REPORT_DIR/workflow_meta.txt"
 
           git checkout -- config/experiment.yaml || true
@@ -170,6 +170,6 @@ jobs:
             echo "No N2b report changes to commit"
             exit 0
           fi
-          git commit -m "Record moderate neck reallocation N2b 5e screening"
+          git commit -m "Record budget-constrained neck reallocation N2b 5e screening"
           git pull --rebase origin research/yoloedge27-neck-realloc-v2
           git push origin HEAD:research/yoloedge27-neck-realloc-v2
