@@ -1,0 +1,372 @@
+{
+  "purpose": "N2 fixed fine-scale neck capacity reallocation local 5e mechanism screen; not final paper evidence.",
+  "novelty_status": "capacity-allocation hypothesis/control; no novelty claim from one width setting",
+  "mechanism": {
+    "name": "N2 Fine-Scale Capacity Reallocation",
+    "base": "H1: S1 SPR P4->P5 + direct reg_max=1",
+    "changed_scope": "PAN/FPN widths only; standard C3k2 retained",
+    "hypothesis": "move a limited inference budget from coarse P4 to high-resolution P2 to favor tiny-object representation",
+    "attention": "none",
+    "assignment": "stock TaskAlignedAssigner",
+    "loss": "standard",
+    "reparameterization": "none"
+  },
+  "protocol": {
+    "epochs": 5,
+    "batch": 8,
+    "nbs": 16,
+    "imgsz": 640,
+    "seed": 42,
+    "pretrained": false,
+    "max_gflops_ratio_vs_h1": 1.03,
+    "max_params_ratio_vs_h1": 1.1,
+    "widths_locked_before_training": true
+  },
+  "controls": {
+    "H0": {
+      "id": "H0",
+      "preset": "edge27_spr_p4p5",
+      "description": "REUSED existing S1: SPR P4->P5 + stock Detect reg_max=16",
+      "status": "reused_existing",
+      "rerun": false,
+      "complexity": {
+        "params": 1736638,
+        "gflops": 9.9122
+      },
+      "epoch5": {
+        "precision": 0.24109,
+        "recall": 0.19443,
+        "map50": 0.14213,
+        "map50_95": 0.07379
+      },
+      "best_eval": {
+        "precision": 0.24151772295054963,
+        "recall": 0.1947574970672591,
+        "map50": 0.14290891413848147,
+        "map50_95": 0.07412907581209939
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.17224715050248374,
+          "recall": 0.31094527363184077,
+          "map50": 0.14414284104116837,
+          "map50_95": 0.05106804110233591
+        },
+        "people": {
+          "precision": 0.4097181898089238,
+          "recall": 0.13177860499869562,
+          "map50": 0.1332432397945635,
+          "map50_95": 0.03979999138819667
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.1585121551155959,
+        "inference": 1.5381940602575896,
+        "loss": 0.00043448722119575675,
+        "postprocess": 2.6878321386770057
+      },
+      "source_results": "/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage1/spr_placement_v1_5e/s1/results.csv",
+      "source_eval": "/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage1/spr_placement_v1_5e/s1/best_eval.json",
+      "delta_best_eval_vs_h0": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "map50": 0.0,
+        "map50_95": 0.0
+      }
+    },
+    "H1": {
+      "id": "H1",
+      "preset": "edge27_head_direct_r1",
+      "description": "stock Detect, global reg_max=1 / DFL-free control",
+      "status": "complete",
+      "rerun": true,
+      "complexity": {
+        "params": 1523322,
+        "gflops": 6.0501
+      },
+      "epoch5": {
+        "precision": 0.32298,
+        "recall": 0.19148,
+        "map50": 0.13678,
+        "map50_95": 0.06809
+      },
+      "best_eval": {
+        "precision": 0.3234986123515966,
+        "recall": 0.19125586123160976,
+        "map50": 0.13716525111748543,
+        "map50_95": 0.06838695464011774
+      },
+      "focus_best_eval": {
+        "pedestrian": {
+          "precision": 0.1324230280495622,
+          "recall": 0.34294436906377207,
+          "map50": 0.1392833605031132,
+          "map50_95": 0.046377298980455714
+        },
+        "people": {
+          "precision": 0.3781135511941139,
+          "recall": 0.13482926829268294,
+          "map50": 0.11461462041310316,
+          "map50_95": 0.033674010065047555
+        }
+      },
+      "speed_ms_best_eval": {
+        "preprocess": 0.16372997629498498,
+        "inference": 1.1806755857740254,
+        "loss": 0.00043318246806297033,
+        "postprocess": 2.598589987196215
+      },
+      "onnx_export": {
+        "ok": true
+      },
+      "local_best_pt": "/home/minh/yoloedge27_experiments/stage3/head_snr_v1_5e/h1_edge27_head_direct_r1/runs/spr-p4p5_direct-r1_standard_attn-none_5e_seed42/weights/best.pt",
+      "delta_best_eval_vs_h0": {
+        "precision": 0.08198088940104697,
+        "recall": -0.0035016358356493305,
+        "map50": -0.005743663020996048,
+        "map50_95": -0.005742121171981654
+      }
+    }
+  },
+  "N1_reference": {
+    "id": "N1",
+    "description": "H1 DFL-free detector + five reparameterized PAN/FPN fusion blocks",
+    "status": "complete",
+    "complexity": {
+      "train_params": 1528778,
+      "deploy_params": 1522178,
+      "train_gflops": 6.0869632,
+      "deploy_gflops": 6.0050432,
+      "h1_deploy_gflops_ratio": 0.9925527181368904
+    },
+    "fusion_preflight_max_abs_diff": 9.5367431640625e-07,
+    "fusion_checkpoint": {
+      "converted_keys": [
+        "model"
+      ],
+      "input_weights": "/home/minh/yoloedge27_experiments/stage5/neck_rep_v1_5e/runs/spr-p4p5_repneck_direct-r1_standard_attn-none_5e_seed42/weights/best.pt",
+      "max_abs_diff_after_reload": 0.0,
+      "max_abs_diff_pre_post_fusion": 0.0001220703125,
+      "output_weights": "/home/minh/yoloedge27_experiments/stage5/neck_rep_v1_5e/deploy/best_deploy.pt",
+      "rep_blocks": 5,
+      "tolerance": 0.0005
+    },
+    "epoch5": {
+      "precision": 0.3192,
+      "recall": 0.19422,
+      "map50": 0.1304,
+      "map50_95": 0.06473
+    },
+    "best_eval": {
+      "precision": 0.32039190945668716,
+      "recall": 0.19400326352449102,
+      "map50": 0.1311402119313687,
+      "map50_95": 0.06499728451815273
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.13621595027007155,
+        "recall": 0.31874574526258637,
+        "map50": 0.12578411001575937,
+        "map50_95": 0.041130042726033406
+      },
+      "people": {
+        "precision": 0.3730675053772255,
+        "recall": 0.10634146341463414,
+        "map50": 0.10772623098874959,
+        "map50_95": 0.030337268863024437
+      }
+    },
+    "speed_ms_best_eval": {
+      "preprocess": 0.14086666971232353,
+      "inference": 1.1469812408795006,
+      "loss": 0.000447186130591002,
+      "postprocess": 2.4300441186152013
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_training_best_pt": "/home/minh/yoloedge27_experiments/stage5/neck_rep_v1_5e/runs/spr-p4p5_repneck_direct-r1_standard_attn-none_5e_seed42/weights/best.pt",
+    "local_deploy_best_pt": "/home/minh/yoloedge27_experiments/stage5/neck_rep_v1_5e/deploy/best_deploy.pt",
+    "delta_best_eval_vs_h0": {
+      "precision": 0.07887418650613753,
+      "recall": -0.0007542335427680735,
+      "map50": -0.011768702207112763,
+      "map50_95": -0.009131791293946659
+    },
+    "delta_focus_vs_h0": {
+      "pedestrian": {
+        "precision": -0.036031200232412186,
+        "recall": 0.007800471630745598,
+        "map50": -0.018358731025408997,
+        "map50_95": -0.009937998376302506
+      },
+      "people": {
+        "precision": -0.03665068443169833,
+        "recall": -0.025437141584061476,
+        "map50": -0.025517008805813923,
+        "map50_95": -0.009462722525172232
+      }
+    },
+    "delta_best_eval_vs_h1": {
+      "precision": -0.003106702894909441,
+      "recall": 0.002747402292881257,
+      "map50": -0.006025039186116715,
+      "map50_95": -0.003389670121965005
+    },
+    "delta_focus_vs_h1": {
+      "pedestrian": {
+        "precision": 0.003792922220509337,
+        "recall": -0.024198623801185704,
+        "map50": -0.013499250487353842,
+        "map50_95": -0.005247256254422308
+      },
+      "people": {
+        "precision": -0.005046045816888389,
+        "recall": -0.028487804878048792,
+        "map50": -0.006888389424353575,
+        "map50_95": -0.0033367412020231177
+      }
+    }
+  },
+  "N2": {
+    "id": "N2",
+    "description": "H1 DFL-free detector with fixed fine-scale-biased neck widths",
+    "status": "complete",
+    "allocation": {
+      "h1_nominal": {
+        "p2": 128,
+        "p3": 256,
+        "p4": 512
+      },
+      "n2_nominal": {
+        "p2": 160,
+        "p3": 256,
+        "p4": 384
+      },
+      "relative": {
+        "p2": "+25%",
+        "p3": "0%",
+        "p4": "-25%"
+      },
+      "effective": {
+        "p2": 40,
+        "p3": 64,
+        "p4": 96
+      },
+      "pan_down_effective": {
+        "p2_p3": 64,
+        "p3_p4": 96
+      }
+    },
+    "complexity": {
+      "params": 1429318,
+      "gflops": 6.0699392,
+      "params_ratio_vs_h1": 0.9382901316990104,
+      "gflops_ratio_vs_h1": 1.003279152410704
+    },
+    "epoch5": {
+      "precision": 0.20789,
+      "recall": 0.19505,
+      "map50": 0.13496,
+      "map50_95": 0.0662
+    },
+    "best_eval": {
+      "precision": 0.20768092006869807,
+      "recall": 0.1943920065444095,
+      "map50": 0.13528378543272437,
+      "map50_95": 0.06644964167424715
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.14616544547061402,
+        "recall": 0.3158366823647503,
+        "map50": 0.13405148281909543,
+        "map50_95": 0.04523859100454998
+      },
+      "people": {
+        "precision": 0.3703364025427662,
+        "recall": 0.13954927058329228,
+        "map50": 0.12625319381113811,
+        "map50_95": 0.03884564591337718
+      }
+    },
+    "speed_ms_best_eval": {
+      "preprocess": 0.1525753649594085,
+      "inference": 1.247376231751239,
+      "loss": 0.0004587773766788615,
+      "postprocess": 1.8567856094818207
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage6/neck_realloc_v1_5e/runs/spr-p4p5_realloc-160-256-384_direct-r1_standard_attn-none_5e_seed42/weights/best.pt",
+    "delta_best_eval_vs_h0": {
+      "precision": -0.03383680288185156,
+      "recall": -0.00036549052284959305,
+      "map50": -0.0076251287057571004,
+      "map50_95": -0.007679434137852242
+    },
+    "delta_focus_vs_h0": {
+      "pedestrian": {
+        "precision": -0.026081705031869712,
+        "recall": 0.004891408732909552,
+        "map50": -0.010091358222072938,
+        "map50_95": -0.005829450097785932
+      },
+      "people": {
+        "precision": -0.03938178726615765,
+        "recall": 0.007770665584596659,
+        "map50": -0.006990045983425397,
+        "map50_95": -0.0009543454748194916
+      }
+    },
+    "delta_best_eval_vs_h1": {
+      "precision": -0.11581769228289854,
+      "recall": 0.0031361453127997374,
+      "map50": -0.0018814656847610522,
+      "map50_95": -0.0019373129658705884
+    },
+    "delta_focus_vs_h1": {
+      "pedestrian": {
+        "precision": 0.013742417421051811,
+        "recall": -0.02710768669902175,
+        "map50": -0.005231877684017783,
+        "map50_95": -0.001138707975905734
+      },
+      "people": {
+        "precision": -0.0077771486513477095,
+        "recall": 0.004720002290609343,
+        "map50": 0.011638573398034952,
+        "map50_95": 0.005171635848329623
+      }
+    },
+    "delta_best_eval_vs_n1": {
+      "precision": -0.1127109893879891,
+      "recall": 0.0003887430199184805,
+      "map50": 0.004143573501355663,
+      "map50_95": 0.0014523571560944165
+    },
+    "delta_focus_vs_n1": {
+      "pedestrian": {
+        "precision": 0.009949495200542474,
+        "recall": -0.0029090628978360455,
+        "map50": 0.00826737280333606,
+        "map50_95": 0.0041085482785165744
+      },
+      "people": {
+        "precision": -0.0027311028344593202,
+        "recall": 0.033207807168658135,
+        "map50": 0.018526962822388526,
+        "map50_95": 0.00850837705035274
+      }
+    }
+  },
+  "promotion": {
+    "promote_to_longer_run": false,
+    "rule": "mAP50-95 >= H1, mAP50 loss <=0.1 pp, pedestrian/people mAP50-95 each no worse by >0.1 pp, GFLOPs <=1.03x H1"
+  },
+  "caution": "single local seed, deterministic=false, 5 epochs only; no final-paper claim from this screen"
+}

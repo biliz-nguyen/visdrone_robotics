@@ -1,0 +1,16 @@
+branch=research/yoloedge27-neck-realloc-v1
+head=fd07cc79902610ec793b65718fbf73557a9b9fe0
+screen_root=/home/minh/yoloedge27_experiments/stage6/neck_realloc_v1_5e
+variant=N2 fine-scale capacity reallocation
+base=H1 direct reg1 with S1 SPR P4->P5
+nominal_neck_channels=P2:160,P3:256,P4:384
+effective_neck_channels=P2:40,P3:64,P4:96
+relative_vs_H1=P2:+25%,P3:0%,P4:-25%
+attention=none
+assignment=stock TAL
+loss=standard
+reparameterization=none
+epochs=5
+gflops_budget=1.03x H1
+params_budget=1.10x H1
+note=local mechanism screening only; widths locked before training

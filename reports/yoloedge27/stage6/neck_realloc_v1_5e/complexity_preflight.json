@@ -1,0 +1,16 @@
+{
+  "assigner": "TaskAlignedAssigner",
+  "gflops": 6.0699392,
+  "head": "Detect",
+  "neck_effective": {
+    "p2": 40,
+    "p3": 64,
+    "p4": 96
+  },
+  "pan_down_effective": {
+    "p2_p3": 64,
+    "p3_p4": 96
+  },
+  "params": 1429318,
+  "reg_max": 1
+}
