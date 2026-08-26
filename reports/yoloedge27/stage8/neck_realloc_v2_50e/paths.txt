@@ -1,0 +1,3 @@
+best=/home/minh/yoloedge27_experiments/stage8/neck_realloc_v2_50e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_50e_seed42/weights/best.pt
+results=/home/minh/yoloedge27_experiments/stage8/neck_realloc_v2_50e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_50e_seed42/results.csv
+eval=/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage8/neck_realloc_v2_50e/neck_realloc_v2_50e_eval.json

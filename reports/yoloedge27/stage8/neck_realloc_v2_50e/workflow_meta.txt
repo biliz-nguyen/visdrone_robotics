@@ -1,0 +1,16 @@
+branch=research/yoloedge27-neck-realloc-v2-50e
+head=1c54d584059fb259e37f3b91eb50c84fd11d4187
+screen_root=/home/minh/yoloedge27_experiments/stage8/neck_realloc_v2_50e
+variant=N2b frozen fine-scale neck reallocation
+base=S1 SPR P4->P5 + H1 direct reg1 design
+nominal_neck=P2:160 P3:256 P4:416
+effective_neck=P2:40 P3:64 P4:104
+epochs=50
+seed=42
+pretrained=false
+attention=none
+assignment=stock TAL
+reparameterization=none
+gflops_budget=1.03x H1
+params_budget=1.10x H1
+note=local convergence screen; H1 50e control still required for fair neck attribution
