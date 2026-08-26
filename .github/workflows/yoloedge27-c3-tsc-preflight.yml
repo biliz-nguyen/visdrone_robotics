@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/yoloedge27-c3-tsc-preflight.yml
       - config/experiment.yaml
+      - scripts/sanity.py
       - src/config.py
       - src/tiny_supervision_calibration.py
       - src/ultralytics_patch.py
@@ -47,6 +48,7 @@ jobs:
           grep -q 'TinySupervisionCalibratedAssigner' src/tiny_supervision_calibration.py
           grep -q 'ranking, selected positives, conflicts and target boxes are unchanged' src/tiny_supervision_calibration.py
           "$PYTHON_BIN" -m py_compile \
+            scripts/sanity.py \
             src/config.py \
             src/tiny_supervision_calibration.py \
             src/ultralytics_patch.py \
@@ -106,6 +108,7 @@ jobs:
           "$PYTHON_BIN" scripts/sanity.py | tee /tmp/c3_sanity.txt
           grep -q 'Params: 1,454,374' /tmp/c3_sanity.txt
           grep -q 'GFLOPs: 6.1555' /tmp/c3_sanity.txt
+          grep -q 'Assigner: TinySupervisionCalibratedAssigner' /tmp/c3_sanity.txt
           LOSS=third_party/ultralytics/ultralytics/utils/loss.py
           grep -q 'TinySupervisionCalibratedAssigner' "$LOSS"
-          echo 'C3 preflight passed: inference architecture remains N2b complexity.'
+          echo 'C3 preflight passed: frozen N2b inference architecture with training-only TSC.'
