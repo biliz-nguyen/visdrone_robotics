@@ -29,6 +29,8 @@ SPR_PLACEMENT_SET = set(SPR_PLACEMENT_ORDER)
 HEAD_MODES = {"standard", "stride_reg"}
 NECK_MODES = {"standard", "rep", "realloc"}
 N2_REALLOC_NOMINAL = {"p2": 160, "p3": 256, "p4": 384}
+N2B_REALLOC_NOMINAL = {"p2": 160, "p3": 256, "p4": 448}
+ALLOWED_REALLOC_NOMINALS = (N2_REALLOC_NOMINAL, N2B_REALLOC_NOMINAL)
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -67,9 +69,11 @@ def normalize_head_bins(cfg: dict[str, Any]) -> list[int]:
 def normalize_neck_channels(cfg: dict[str, Any]) -> dict[str, int]:
     """Return nominal YAML widths for P2/P3/P4 neck outputs.
 
-    N2 is deliberately locked to one hypothesis chosen before training:
-    P2 +25%, P3 unchanged, P4 -25% relative to H1 nominal widths
-    128/256/512. This prevents post-hoc width fishing during the 5e screen.
+    Reallocation screens are locked to two pre-registered hypotheses only:
+    N2  = 160/256/384 (effective 40/64/96 at scale n), and
+    N2b = 160/256/448 (effective 40/64/112 at scale n).
+    This allows one targeted coarse-capacity recovery test without opening a
+    post-hoc channel sweep.
     """
     if cfg.get("neck_mode", "standard") != "realloc":
         return {"p2": 128, "p3": 256, "p4": 512}
@@ -77,9 +81,10 @@ def normalize_neck_channels(cfg: dict[str, Any]) -> dict[str, int]:
     if not isinstance(raw, dict):
         raise ValueError("neck_channels_nominal must be a mapping with p2/p3/p4")
     out = {k: int(raw[k]) for k in ("p2", "p3", "p4")}
-    if out != N2_REALLOC_NOMINAL:
+    if out not in ALLOWED_REALLOC_NOMINALS:
         raise ValueError(
-            f"N2 v1 is locked to neck_channels_nominal={N2_REALLOC_NOMINAL}, got {out}"
+            "Reallocation study is locked to pre-registered widths "
+            f"{list(ALLOWED_REALLOC_NOMINALS)}, got {out}"
         )
     return out
 
@@ -216,7 +221,6 @@ def _validate(cfg: dict[str, Any]) -> None:
         if neck_mode not in NECK_MODES:
             raise ValueError(f"Unknown neck_mode={neck_mode!r}")
         if neck_mode == "realloc":
-            # Trigger the locked-v1 check explicitly during validation too.
             normalize_neck_channels(cfg)
     else:
         raise ValueError(f"Unknown study={study!r}")
