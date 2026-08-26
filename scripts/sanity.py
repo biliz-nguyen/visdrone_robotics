@@ -7,7 +7,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.config import normalize_head_bins, normalize_spr_placements
+from src.config import normalize_head_bins, normalize_neck_channels, normalize_spr_placements
 from src.runtime import prepare_runtime
 
 
@@ -65,6 +65,8 @@ def main():
     study = cfg.get("study")
     neck_mode = cfg.get("neck_mode", "standard")
     rep_neck_blocks = [m for m in model.model.modules() if m.__class__.__name__ == "RepC3k2"]
+    neck_effective = None
+    pan_down_effective = None
 
     if study == "head":
         assert placements == ["p4_p5"]
@@ -84,6 +86,22 @@ def main():
             assert len(rep_neck_blocks) == 5, f"Expected 5 RepC3k2 neck blocks, got {len(rep_neck_blocks)}"
         else:
             assert len(rep_neck_blocks) == 0
+
+        if neck_mode == "realloc":
+            nominal = normalize_neck_channels(cfg)
+            assert nominal == {"p2": 160, "p3": 256, "p4": 384}
+            # With scale=n width=0.25 these fixed nominal widths become 40/64/96.
+            neck_effective = {
+                "p2": int(seq[19].cv2.conv.out_channels),
+                "p3": int(seq[22].cv2.conv.out_channels),
+                "p4": int(seq[25].cv2.conv.out_channels),
+            }
+            assert neck_effective == {"p2": 40, "p3": 64, "p4": 96}, neck_effective
+            pan_down_effective = {
+                "p2_p3": int(seq[20].conv.out_channels),
+                "p3_p4": int(seq[23].conv.out_channels),
+            }
+            assert pan_down_effective == {"p2_p3": 64, "p3_p4": 96}, pan_down_effective
 
     criterion = model.model.init_criterion()
     assigner_name = criterion.assigner.__class__.__name__
@@ -122,6 +140,9 @@ def main():
     print("Stage modules:", stage_modules)
     print("Neck mode:", neck_mode)
     print("RepC3k2 count:", len(rep_neck_blocks))
+    if neck_effective is not None:
+        print("Neck effective channels P2/P3/P4:", neck_effective)
+        print("PAN downsample effective channels:", pan_down_effective)
     print("Head:", detect.__class__.__name__)
     print("Head mode:", head_mode)
     print("Regression bins P2/P3/P4:", bins)
