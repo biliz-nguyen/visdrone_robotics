@@ -91,7 +91,7 @@ def main():
             nominal = normalize_neck_channels(cfg)
             expected_map = {
                 (160, 256, 384): ({"p2": 40, "p3": 64, "p4": 96}, {"p2_p3": 64, "p3_p4": 96}),
-                (160, 256, 448): ({"p2": 40, "p3": 64, "p4": 112}, {"p2_p3": 64, "p3_p4": 112}),
+                (160, 256, 416): ({"p2": 40, "p3": 64, "p4": 104}, {"p2_p3": 64, "p3_p4": 104}),
             }
             key = (nominal["p2"], nominal["p3"], nominal["p4"])
             if key not in expected_map:
