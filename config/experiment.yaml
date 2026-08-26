@@ -110,9 +110,8 @@ presets:
     neck_mode: "rep"
 
   # N2: fixed fine-scale-biased capacity reallocation.
-  # Relative to H1 nominal neck widths 128/256/512:
-  # P2 +25%, P3 unchanged, P4 -25%. With scale=n width=0.25,
-  # the deployed detection features become 40/64/96 channels.
+  # Relative to H1 nominal widths 128/256/512: P2 +25%, P3 0%, P4 -25%.
+  # scale=n -> effective 40/64/96.
   edge27_neck_realloc_v1:
     study: "neck"
     backbone_down: "sprdown"
@@ -126,6 +125,24 @@ presets:
       p2: 160
       p3: 256
       p4: 384
+
+  # N2b: one targeted recovery test after N2.
+  # Keep the N2 P2 boost, restore part of the coarse P4 capacity, and leave P3 fixed.
+  # Relative to H1 nominal widths: P2 +25%, P3 0%, P4 -12.5%.
+  # scale=n -> effective 40/64/112.
+  edge27_neck_realloc_v2:
+    study: "neck"
+    backbone_down: "sprdown"
+    spr_placements: ["p4_p5"]
+    reg_max: 1
+    loss_mode: "standard"
+    attention: "none"
+    head_mode: "standard"
+    neck_mode: "realloc"
+    neck_channels_nominal:
+      p2: 160
+      p3: 256
+      p4: 448
 
   edge27_head_snr_16_8_4:
     study: "head"
