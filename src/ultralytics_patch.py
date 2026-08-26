@@ -48,6 +48,22 @@ def patch_ultralytics(cfg: dict) -> None:
         compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
 
+def _insert_into_frozenset(text: str, set_name: str, names: list[str]) -> str:
+    match = re.search(
+        rf"{re.escape(set_name)}\s*=\s*frozenset\(\s*\{{(?P<body>.*?)\}}\s*\)",
+        text,
+        flags=re.S,
+    )
+    if match is None:
+        raise RuntimeError(f"Cannot find {set_name} in tasks.py")
+    body = match.group("body")
+    missing = [name for name in names if not re.search(rf"\b{name}\b", body)]
+    if not missing:
+        return text
+    insertion = "".join(f"\n            {name}," for name in missing)
+    return text[: match.start("body")] + insertion + body + text[match.end("body") :]
+
+
 def _patch_tasks(tasks_py: Path) -> None:
     text = tasks_py.read_text(encoding="utf-8")
 
@@ -63,19 +79,17 @@ def _patch_tasks(tasks_py: Path) -> None:
     if missing_imports:
         text = text[:idx] + "\n".join(missing_imports) + "\n\n" + text[idx:]
 
-    base_match = re.search(
-        r"base_modules\s*=\s*frozenset\(\s*\{(?P<body>.*?)\}\s*\)",
+    text = _insert_into_frozenset(
         text,
-        flags=re.S,
+        "base_modules",
+        ["SPRDown", "AConv", "ECA", "CoordAtt", "ResidualLiteCA", "RepC3k2"],
     )
-    if base_match is None:
-        raise RuntimeError("Cannot find base_modules in tasks.py")
-    body = base_match.group("body")
-    needed = ["SPRDown", "AConv", "ECA", "CoordAtt", "ResidualLiteCA", "RepC3k2"]
-    missing = [name for name in needed if not re.search(rf"\b{name}\b", body)]
-    if missing:
-        insertion = "".join(f"\n            {name}," for name in missing)
-        text = text[: base_match.start("body")] + insertion + body + text[base_match.end("body") :]
+
+    # RepC3k2 mirrors the stock C3k2 constructor. Register it as a repeat
+    # module so parse_model applies the same depth multiplier and inserts the
+    # scaled internal repeat count at args[2]. This is essential for a fair
+    # N1 comparison; otherwise an explicit n bypasses scale=n depth scaling.
+    text = _insert_into_frozenset(text, "repeat_modules", ["RepC3k2"])
 
     parse_anchor = (
         "        elif m is Concat:\n"

@@ -80,8 +80,6 @@ class RepConvUnit(nn.Module):
 
     @staticmethod
     def _fuse_branch(branch):
-        if branch is None:
-            return 0, 0
         if isinstance(branch, nn.Sequential):
             conv, bn = branch[0], branch[1]
             kernel = conv.weight
@@ -108,9 +106,7 @@ class RepConvUnit(nn.Module):
         k3, b3 = self._fuse_branch(self.rbr_dense)
         k1, b1 = self._fuse_branch(self.rbr_1x1)
         kid, bid = self._fuse_branch(self.rbr_identity)
-
-        if isinstance(k1, torch.Tensor):
-            k1 = torch.nn.functional.pad(k1, [1, 1, 1, 1])
+        k1 = torch.nn.functional.pad(k1, [1, 1, 1, 1])
         return k3 + k1 + kid, b3 + b1 + bid
 
     def switch_to_deploy(self):
@@ -135,7 +131,7 @@ class RepConvUnit(nn.Module):
 
 
 class RepBottleneck(nn.Module):
-    """YOLO-style residual bottleneck with a reparameterized first 3x3 conv."""
+    """C3k2-compatible bottleneck with one train-rich reparameterized 3x3."""
 
     def __init__(self, channels: int, shortcut: bool = True):
         super().__init__()
@@ -155,28 +151,36 @@ class RepBottleneck(nn.Module):
 
 
 class RepC3k2(nn.Module):
-    """C2f/C3k2-like fusion block with train-rich, deploy-simple bottlenecks.
+    """C3k2-compatible neck block with structural reparameterization.
 
-    The block is used only in the PAN/FPN neck. During training each internal
-    RepConvUnit has 3x3, 1x1 and identity branches. At deployment those branches
-    are analytically fused to a single 3x3 convolution, so the deployed graph
-    retains one spatial conv at that location rather than three parallel paths.
+    Its constructor mirrors Ultralytics C3k2 so the model parser applies the
+    same width/depth scaling as the control. N1 supports only the plain
+    C3k2(c3k=False, attn=False) path used by the PAN/FPN neck. Training adds
+    1x1 and identity branches to the first 3x3 of each bottleneck; deployment
+    analytically fuses them back into that single 3x3.
     """
 
     def __init__(
         self,
         c1: int,
         c2: int,
-        n: int = 2,
-        shortcut: bool = True,
-        g: int = 1,
+        n: int = 1,
+        c3k: bool = False,
         e: float = 0.5,
+        attn: bool = False,
+        g: int = 1,
+        shortcut: bool = True,
     ):
         super().__init__()
+        if bool(c3k):
+            raise ValueError("RepC3k2 N1 supports c3k=False only")
+        if bool(attn):
+            raise ValueError("RepC3k2 N1 keeps attention disabled")
         if int(g) != 1:
-            raise ValueError("RepC3k2 v1 supports g=1 only")
+            raise ValueError("RepC3k2 N1 supports g=1 only")
         if int(n) < 1:
             raise ValueError("RepC3k2 requires n>=1")
+
         hidden = max(1, int(c2 * float(e)))
         self.c1 = int(c1)
         self.c2 = int(c2)

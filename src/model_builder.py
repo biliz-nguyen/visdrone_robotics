@@ -35,9 +35,10 @@ def _detect_line(cfg: dict, indices: list[int]) -> str:
 def _neck_fusion_line(cfg: dict, c2: int) -> str:
     """Return one neck fusion layer while keeping YAML layer indices stable."""
     if cfg.get("neck_mode", "standard") == "rep":
-        # Standard C3k2(c3k=False) keeps residual bottlenecks enabled by default.
-        # RepC3k2 therefore uses shortcut=True for the closest deploy-graph match.
-        return f"  - [-1, 1, RepC3k2, [{int(c2)}, 2, true]]"
+        # Keep the exact same YAML repeat count/arguments as stock C3k2. The
+        # parser treats RepC3k2 as a repeat module, so scale=n applies the same
+        # depth multiplier before inserting internal n.
+        return f"  - [-1, 2, RepC3k2, [{int(c2)}, false]]"
     return f"  - [-1, 2, C3k2, [{int(c2)}, false]]"
 
 
