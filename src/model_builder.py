@@ -32,6 +32,15 @@ def _detect_line(cfg: dict, indices: list[int]) -> str:
     return f"  - [{indices}, 1, Detect, [nc]]"
 
 
+def _neck_fusion_line(cfg: dict, c2: int) -> str:
+    """Return one neck fusion layer while keeping YAML layer indices stable."""
+    if cfg.get("neck_mode", "standard") == "rep":
+        # RepC3k2 owns its two internal bottlenecks so the YAML layer itself is
+        # repeated once. This preserves the surrounding PAN/FPN graph indices.
+        return f"  - [-1, 1, RepC3k2, [{int(c2)}, 2, false]]"
+    return f"  - [-1, 2, C3k2, [{int(c2)}, false]]"
+
+
 def build_model_yaml(cfg: dict) -> Path:
     generated = Path(cfg["generated_dir"])
     generated.mkdir(parents=True, exist_ok=True)
@@ -40,6 +49,12 @@ def build_model_yaml(cfg: dict) -> Path:
     down_p2_p3 = _downsample_line(cfg, "p2_p3")
     down_p3_p4 = _downsample_line(cfg, "p3_p4")
     down_p4_p5 = _downsample_line(cfg, "p4_p5")
+
+    neck_512_top = _neck_fusion_line(cfg, 512)
+    neck_256_top = _neck_fusion_line(cfg, 256)
+    neck_128_p2 = _neck_fusion_line(cfg, 128)
+    neck_256_bottom = _neck_fusion_line(cfg, 256)
+    neck_512_bottom = _neck_fusion_line(cfg, 512)
 
     attn = cfg["attention"]
     attention_cfg = cfg["attention_cfg"]
@@ -68,23 +83,23 @@ def build_model_yaml(cfg: dict) -> Path:
 head:
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 6], 1, Concat, [1]]
-  - [-1, 2, C3k2, [512, false]]
+{neck_512_top}
 
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 4], 1, Concat, [1]]
-  - [-1, 2, C3k2, [256, false]]
+{neck_256_top}
 
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 2], 1, Concat, [1]]
-  - [-1, 2, C3k2, [128, false]]
+{neck_128_p2}
 
   - [-1, 1, Conv, [256, 3, 2]]
   - [[-1, 16], 1, Concat, [1]]
-  - [-1, 2, C3k2, [256, false]]
+{neck_256_bottom}
 
   - [-1, 1, Conv, [512, 3, 2]]
   - [[-1, 13], 1, Concat, [1]]
-  - [-1, 2, C3k2, [512, false]]
+{neck_512_bottom}
 
 {detect_line}
 """
@@ -94,25 +109,25 @@ head:
 head:
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 6], 1, Concat, [1]]
-  - [-1, 2, C3k2, [512, false]]
+{neck_512_top}
 
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 4], 1, Concat, [1]]
-  - [-1, 2, C3k2, [256, false]]
+{neck_256_top}
 
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 2], 1, Concat, [1]]
-  - [-1, 2, C3k2, [128, false]]
+{neck_128_p2}
 
 {attention_line}
 
   - [-1, 1, Conv, [256, 3, 2]]
   - [[-1, 16], 1, Concat, [1]]
-  - [-1, 2, C3k2, [256, false]]
+{neck_256_bottom}
 
   - [-1, 1, Conv, [512, 3, 2]]
   - [[-1, 13], 1, Concat, [1]]
-  - [-1, 2, C3k2, [512, false]]
+{neck_512_bottom}
 
 {detect_line}
 """
