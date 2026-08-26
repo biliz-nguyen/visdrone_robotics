@@ -19,6 +19,7 @@ EXPERIMENT = ROOT / "config" / "experiment.yaml"
 LOCAL = ROOT / "config" / "local.yaml"
 CONTROL_SUMMARY = ROOT / "reports" / "yoloedge27" / "stage3" / "head_snr_v1_5e" / "summary.json"
 N1_SUMMARY = ROOT / "reports" / "yoloedge27" / "stage5" / "neck_rep_v1_5e" / "summary.json"
+N2_SUMMARY = ROOT / "reports" / "yoloedge27" / "stage6" / "neck_realloc_v1_5e" / "summary.json"
 
 
 def parse_args():
@@ -108,10 +109,11 @@ def main() -> int:
     controls = {k: prior["variants"][k] for k in ("H0", "H1")}
     h1 = controls["H1"]
     n1_prior = json.loads(N1_SUMMARY.read_text(encoding="utf-8"))["N1"] if N1_SUMMARY.exists() else None
+    n2_prior = json.loads(N2_SUMMARY.read_text(encoding="utf-8"))["N2"] if N2_SUMMARY.exists() else None
 
     original_text = EXPERIMENT.read_text(encoding="utf-8")
     cfg = yaml.safe_load(original_text)
-    cfg["preset"] = "edge27_neck_realloc_v1"
+    cfg["preset"] = "edge27_neck_realloc_v2"
     cfg["train"]["epochs"] = int(args.epochs)
     cfg["train"]["batch"] = int(args.batch)
     cfg["train"]["nbs"] = int(args.nbs)
@@ -153,13 +155,14 @@ def main() -> int:
         required = [
             "Neck mode: realloc",
             "RepC3k2 count: 0",
-            "Neck effective channels P2/P3/P4: {'p2': 40, 'p3': 64, 'p4': 96}",
+            "Neck nominal channels P2/P3/P4: {'p2': 160, 'p3': 256, 'p4': 448}",
+            "Neck effective channels P2/P3/P4: {'p2': 40, 'p3': 64, 'p4': 112}",
             "Assigner: TaskAlignedAssigner",
             "Regression bins P2/P3/P4: [1, 1, 1]",
         ]
         for marker in required:
             if marker not in sanity:
-                raise RuntimeError(f"N2 sanity marker missing: {marker}")
+                raise RuntimeError(f"N2b sanity marker missing: {marker}")
 
         probe_code = r'''
 import json
@@ -184,8 +187,8 @@ pan_down = {
     'p2_p3': int(seq[20].conv.out_channels),
     'p3_p4': int(seq[23].conv.out_channels),
 }
-assert neck == {'p2': 40, 'p3': 64, 'p4': 96}, neck
-assert pan_down == {'p2_p3': 64, 'p3_p4': 96}, pan_down
+assert neck == {'p2': 40, 'p3': 64, 'p4': 112}, neck
+assert pan_down == {'p2_p3': 64, 'p3_p4': 112}, pan_down
 params = sum(p.numel() for p in m.parameters())
 x = torch.randn(1, 3, int(cfg['train']['imgsz']), int(cfg['train']['imgsz']))
 with torch.no_grad():
@@ -199,21 +202,21 @@ payload = {
     'head': seq[-1].__class__.__name__,
     'reg_max': int(seq[-1].reg_max),
 }
-print('N2_PROBE_JSON=' + json.dumps(payload, sort_keys=True))
+print('N2B_PROBE_JSON=' + json.dumps(payload, sort_keys=True))
 '''
         probe_text = run_capture([sys.executable, "-c", probe_code], env)
-        probe = parse_marker(probe_text, "N2_PROBE_JSON=")
+        probe = parse_marker(probe_text, "N2B_PROBE_JSON=")
         (report_dir / "complexity_preflight.json").write_text(json.dumps(probe, indent=2) + "\n", encoding="utf-8")
 
         h1_params = int(h1["complexity"]["params"])
         h1_gflops = float(h1["complexity"]["gflops"])
         if int(probe["params"]) > h1_params * float(args.max_params_ratio):
             raise RuntimeError(
-                f"N2 params exceed budget: {probe['params']} vs H1 {h1_params} (limit {args.max_params_ratio:.3f}x)"
+                f"N2b params exceed budget: {probe['params']} vs H1 {h1_params} (limit {args.max_params_ratio:.3f}x)"
             )
         if float(probe["gflops"]) > h1_gflops * float(args.max_gflops_ratio):
             raise RuntimeError(
-                f"N2 GFLOPs exceed budget: {probe['gflops']:.4f} vs H1 {h1_gflops:.4f} (limit {args.max_gflops_ratio:.3f}x)"
+                f"N2b GFLOPs exceed budget: {probe['gflops']:.4f} vs H1 {h1_gflops:.4f} (limit {args.max_gflops_ratio:.3f}x)"
             )
 
         run_live([sys.executable, "scripts/train.py"], env)
@@ -221,7 +224,7 @@ print('N2_PROBE_JSON=' + json.dumps(payload, sort_keys=True))
         results = newest(screen_root, "runs/*/results.csv")
         train_args = newest(screen_root, "runs/*/args.yaml")
 
-        eval_path = report_dir / "neck_realloc_v1_5e_eval.json"
+        eval_path = report_dir / "neck_realloc_v2_5e_eval.json"
         run_live([sys.executable, "scripts/eval_screening.py", "--weights", str(best), "--output", str(eval_path)], env)
 
         onnx_ok = True
@@ -236,14 +239,15 @@ print('N2_PROBE_JSON=' + json.dumps(payload, sort_keys=True))
         shutil.copy2(train_args, report_dir / "args.yaml")
         eval_data = json.loads(eval_path.read_text(encoding="utf-8"))
 
-        n2 = {
-            "id": "N2",
-            "description": "H1 DFL-free detector with fixed fine-scale-biased neck widths",
+        n2b = {
+            "id": "N2b",
+            "description": "N2 fine-scale neck with partial P4 capacity restored",
             "status": "complete",
             "allocation": {
                 "h1_nominal": {"p2": 128, "p3": 256, "p4": 512},
                 "n2_nominal": {"p2": 160, "p3": 256, "p4": 384},
-                "relative": {"p2": "+25%", "p3": "0%", "p4": "-25%"},
+                "n2b_nominal": {"p2": 160, "p3": 256, "p4": 448},
+                "relative_vs_h1": {"p2": "+25%", "p3": "0%", "p4": "-12.5%"},
                 "effective": probe["neck_effective"],
                 "pan_down_effective": probe["pan_down_effective"],
             },
@@ -261,32 +265,35 @@ print('N2_PROBE_JSON=' + json.dumps(payload, sort_keys=True))
             "local_best_pt": str(best),
         }
         for control_id, control in controls.items():
-            n2[f"delta_best_eval_vs_{control_id.lower()}"] = deltas(n2["best_eval"], control["best_eval"])
-            n2[f"delta_focus_vs_{control_id.lower()}"] = focus_deltas(n2["focus_best_eval"], control["focus_best_eval"])
+            n2b[f"delta_best_eval_vs_{control_id.lower()}"] = deltas(n2b["best_eval"], control["best_eval"])
+            n2b[f"delta_focus_vs_{control_id.lower()}"] = focus_deltas(n2b["focus_best_eval"], control["focus_best_eval"])
         if n1_prior is not None:
-            n2["delta_best_eval_vs_n1"] = deltas(n2["best_eval"], n1_prior["best_eval"])
-            n2["delta_focus_vs_n1"] = focus_deltas(n2["focus_best_eval"], n1_prior["focus_best_eval"])
+            n2b["delta_best_eval_vs_n1"] = deltas(n2b["best_eval"], n1_prior["best_eval"])
+            n2b["delta_focus_vs_n1"] = focus_deltas(n2b["focus_best_eval"], n1_prior["focus_best_eval"])
+        if n2_prior is not None:
+            n2b["delta_best_eval_vs_n2"] = deltas(n2b["best_eval"], n2_prior["best_eval"])
+            n2b["delta_focus_vs_n2"] = focus_deltas(n2b["focus_best_eval"], n2_prior["focus_best_eval"])
 
         focus_ok = True
         for cls in ("pedestrian", "people"):
-            if cls in n2["focus_best_eval"] and cls in h1["focus_best_eval"]:
-                if float(n2["focus_best_eval"][cls]["map50_95"]) < float(h1["focus_best_eval"][cls]["map50_95"]) - 0.001:
+            if cls in n2b["focus_best_eval"] and cls in h1["focus_best_eval"]:
+                if float(n2b["focus_best_eval"][cls]["map50_95"]) < float(h1["focus_best_eval"][cls]["map50_95"]) - 0.001:
                     focus_ok = False
         promote = (
-            float(n2["best_eval"]["map50_95"]) >= float(h1["best_eval"]["map50_95"])
-            and float(n2["best_eval"]["map50"]) >= float(h1["best_eval"]["map50"]) - 0.001
+            float(n2b["best_eval"]["map50_95"]) >= float(h1["best_eval"]["map50_95"])
+            and float(n2b["best_eval"]["map50"]) >= float(h1["best_eval"]["map50"]) - 0.001
             and focus_ok
             and float(probe["gflops"]) <= h1_gflops * float(args.max_gflops_ratio)
         )
 
         summary = {
-            "purpose": "N2 fixed fine-scale neck capacity reallocation local 5e mechanism screen; not final paper evidence.",
-            "novelty_status": "capacity-allocation hypothesis/control; no novelty claim from one width setting",
+            "purpose": "N2b targeted moderate fine-scale neck reallocation local 5e screen; not final paper evidence.",
+            "novelty_status": "targeted capacity-allocation follow-up; no novelty claim from one width setting",
             "mechanism": {
-                "name": "N2 Fine-Scale Capacity Reallocation",
+                "name": "N2b Moderate Fine-Scale Capacity Reallocation",
                 "base": "H1: S1 SPR P4->P5 + direct reg_max=1",
                 "changed_scope": "PAN/FPN widths only; standard C3k2 retained",
-                "hypothesis": "move a limited inference budget from coarse P4 to high-resolution P2 to favor tiny-object representation",
+                "rationale": "retain N2 P2 boost but restore half of the P4 capacity removed by N2 to recover localization while preserving tiny-object gains",
                 "attention": "none",
                 "assignment": "stock TaskAlignedAssigner",
                 "loss": "standard",
@@ -302,10 +309,12 @@ print('N2_PROBE_JSON=' + json.dumps(payload, sort_keys=True))
                 "max_gflops_ratio_vs_h1": float(args.max_gflops_ratio),
                 "max_params_ratio_vs_h1": float(args.max_params_ratio),
                 "widths_locked_before_training": True,
+                "single_followup_after_n2": True,
             },
             "controls": controls,
             "N1_reference": n1_prior,
-            "N2": n2,
+            "N2_reference": n2_prior,
+            "N2b": n2b,
             "promotion": {
                 "promote_to_longer_run": bool(promote),
                 "rule": "mAP50-95 >= H1, mAP50 loss <=0.1 pp, pedestrian/people mAP50-95 each no worse by >0.1 pp, GFLOPs <=1.03x H1",
@@ -317,11 +326,11 @@ print('N2_PROBE_JSON=' + json.dumps(payload, sort_keys=True))
             f"best={best}\nresults={results}\neval={eval_path}\n",
             encoding="utf-8",
         )
-        print("N2_SUMMARY_JSON=" + json.dumps({
-            "params": n2["complexity"]["params"],
-            "gflops": n2["complexity"]["gflops"],
-            "best_eval": n2["best_eval"],
-            "focus": n2["focus_best_eval"],
+        print("N2B_SUMMARY_JSON=" + json.dumps({
+            "params": n2b["complexity"]["params"],
+            "gflops": n2b["complexity"]["gflops"],
+            "best_eval": n2b["best_eval"],
+            "focus": n2b["focus_best_eval"],
             "promote": promote,
         }, sort_keys=True))
         return 0
