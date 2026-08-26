@@ -5,6 +5,7 @@ import copy
 import torch
 
 from src.rep_neck import RepC3k2, RepConvUnit, switch_reparameterized_neck_to_deploy
+from src.ultralytics_patch import _insert_into_frozenset
 
 
 def _max_abs(a: torch.Tensor, b: torch.Tensor) -> float:
@@ -48,3 +49,27 @@ def test_deploy_removes_parallel_rep_branches():
         assert not hasattr(block.cv1, "rbr_dense")
         assert not hasattr(block.cv1, "rbr_1x1")
         assert not hasattr(block.cv1, "rbr_identity")
+
+
+def test_repeat_modules_patch_accepts_inline_comment_after_frozenset_open():
+    # Mirrors the exact formatting used by the pinned Ultralytics tasks.py:
+    # repeat_modules = frozenset(  # modules with 'repeat' arguments
+    #     {
+    #         C3k2,
+    #     }
+    # )
+    text = """
+repeat_modules = frozenset(  # modules with 'repeat' arguments
+    {
+        C3k2,
+        C2f,
+    }
+)
+"""
+    patched = _insert_into_frozenset(text, "repeat_modules", ["RepC3k2"])
+    assert "RepC3k2," in patched
+    assert "C3k2," in patched
+    assert "# modules with 'repeat' arguments" in patched
+    # Idempotence matters because prepare_runtime() may patch more than once.
+    patched_twice = _insert_into_frozenset(patched, "repeat_modules", ["RepC3k2"])
+    assert patched_twice == patched
