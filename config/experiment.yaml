@@ -1,10 +1,11 @@
 # ============================================================
 # YOLOEdge27 — Q1 RESEARCH TRACK
-# Confirmed backbone: one SPR-Down at P4->P5 (S1).
-# H1 direct reg_max=1 is the deployment control for neck studies.
+# C1: one SPR-Down at P4->P5 (S1).
+# C2: frozen N2b neck allocation 160/256/416 nominal.
+# C3-v1: Tiny-Supervision Calibration (TSC), training-only.
 # ============================================================
 
-preset: "edge27_head_snr_16_8_4"
+preset: "edge27_c3_tsc_v1"
 
 ultralytics_tag: "v8.4.56"
 
@@ -110,8 +111,6 @@ presets:
     neck_mode: "rep"
 
   # N2: fixed fine-scale-biased capacity reallocation.
-  # Relative to H1 nominal widths 128/256/512: P2 +25%, P3 0%, P4 -25%.
-  # scale=n -> effective 40/64/96.
   edge27_neck_realloc_v1:
     study: "neck"
     backbone_down: "sprdown"
@@ -126,12 +125,8 @@ presets:
       p3: 256
       p4: 384
 
-  # N2b budget-constrained recovery after N2.
-  # The first P4=448 preflight was rejected before training because GFLOPs
-  # exceeded 1.03x H1. Keep P2 boost, restore only 25% of the P4 capacity
-  # removed by N2, and stay inside the declared compute budget.
-  # Relative to H1 nominal widths: P2 +25%, P3 0%, P4 -18.75%.
-  # scale=n -> effective 40/64/104.
+  # C2/N2b: frozen budget-constrained resolution-aware allocation.
+  # 448 was rejected before training for exceeding the 1.03x-H1 FLOPs budget.
   edge27_neck_realloc_v2:
     study: "neck"
     backbone_down: "sprdown"
@@ -145,6 +140,24 @@ presets:
       p2: 160
       p3: 256
       p4: 416
+
+  # C3-v1: keep the entire C1+C2 inference architecture frozen and alter only
+  # TAL's post-assignment soft-target amplitude for tiny GTs. Candidate region,
+  # top-k ranking, conflict resolution and target boxes remain standard TAL.
+  edge27_c3_tsc_v1:
+    study: "optimization"
+    backbone_down: "sprdown"
+    spr_placements: ["p4_p5"]
+    reg_max: 1
+    loss_mode: "standard"
+    attention: "none"
+    head_mode: "standard"
+    neck_mode: "realloc"
+    neck_channels_nominal:
+      p2: 160
+      p3: 256
+      p4: 416
+    assigner_mode: "tiny_supervision"
 
   edge27_head_snr_16_8_4:
     study: "head"
@@ -170,7 +183,7 @@ presets:
 
 train:
   imgsz: 640
-  epochs: 50
+  epochs: 5
   batch: 8
   nbs: 16
   workers: 4
@@ -186,7 +199,7 @@ train:
   amp: true
   deterministic: false
   patience: 0
-  save_period: 10
+  save_period: 1
   max_det: 500
 
   hsv_h: 0.015
@@ -211,6 +224,11 @@ train:
 
 seed: 42
 pretrained: false
+
+# Locked C3-v1 setting. Do not tune these values after seeing validation AP.
+tiny_supervision:
+  tiny_min_side: 16.0
+  gamma_floor: 0.5
 
 nwd:
   c: 12.8
