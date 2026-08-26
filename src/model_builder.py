@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import textwrap
 
-from src.config import normalize_head_bins, normalize_spr_placements
+from src.config import normalize_head_bins, normalize_neck_channels, normalize_spr_placements
 
 
 _STAGE_TO_CHANNELS = {
@@ -35,9 +35,6 @@ def _detect_line(cfg: dict, indices: list[int]) -> str:
 def _neck_fusion_line(cfg: dict, c2: int) -> str:
     """Return one neck fusion layer while keeping YAML layer indices stable."""
     if cfg.get("neck_mode", "standard") == "rep":
-        # Keep the exact same YAML repeat count/arguments as stock C3k2. The
-        # parser treats RepC3k2 as a repeat module, so scale=n applies the same
-        # depth multiplier before inserting internal n.
         return f"  - [-1, 2, RepC3k2, [{int(c2)}, false]]"
     return f"  - [-1, 2, C3k2, [{int(c2)}, false]]"
 
@@ -51,11 +48,22 @@ def build_model_yaml(cfg: dict) -> Path:
     down_p3_p4 = _downsample_line(cfg, "p3_p4")
     down_p4_p5 = _downsample_line(cfg, "p4_p5")
 
-    neck_512_top = _neck_fusion_line(cfg, 512)
-    neck_256_top = _neck_fusion_line(cfg, 256)
-    neck_128_p2 = _neck_fusion_line(cfg, 128)
-    neck_256_bottom = _neck_fusion_line(cfg, 256)
-    neck_512_bottom = _neck_fusion_line(cfg, 512)
+    neck = normalize_neck_channels(cfg)
+    p2_c = int(neck["p2"])
+    p3_c = int(neck["p3"])
+    p4_c = int(neck["p4"])
+
+    neck_p4_top = _neck_fusion_line(cfg, p4_c)
+    neck_p3_top = _neck_fusion_line(cfg, p3_c)
+    neck_p2 = _neck_fusion_line(cfg, p2_c)
+    neck_p3_bottom = _neck_fusion_line(cfg, p3_c)
+    neck_p4_bottom = _neck_fusion_line(cfg, p4_c)
+
+    # N2 keeps the whole bottom-up path scale-consistent with the reallocated
+    # output widths. For standard/rep modes normalize_neck_channels() returns
+    # the original 128/256/512 nominal widths, so behavior is unchanged.
+    pan_down_p2_p3 = f"  - [-1, 1, Conv, [{p3_c}, 3, 2]]"
+    pan_down_p3_p4 = f"  - [-1, 1, Conv, [{p4_c}, 3, 2]]"
 
     attn = cfg["attention"]
     attention_cfg = cfg["attention_cfg"]
@@ -84,23 +92,23 @@ def build_model_yaml(cfg: dict) -> Path:
 head:
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 6], 1, Concat, [1]]
-{neck_512_top}
+{neck_p4_top}
 
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 4], 1, Concat, [1]]
-{neck_256_top}
+{neck_p3_top}
 
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 2], 1, Concat, [1]]
-{neck_128_p2}
+{neck_p2}
 
-  - [-1, 1, Conv, [256, 3, 2]]
+{pan_down_p2_p3}
   - [[-1, 16], 1, Concat, [1]]
-{neck_256_bottom}
+{neck_p3_bottom}
 
-  - [-1, 1, Conv, [512, 3, 2]]
+{pan_down_p3_p4}
   - [[-1, 13], 1, Concat, [1]]
-{neck_512_bottom}
+{neck_p4_bottom}
 
 {detect_line}
 """
@@ -110,25 +118,25 @@ head:
 head:
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 6], 1, Concat, [1]]
-{neck_512_top}
+{neck_p4_top}
 
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 4], 1, Concat, [1]]
-{neck_256_top}
+{neck_p3_top}
 
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
   - [[-1, 2], 1, Concat, [1]]
-{neck_128_p2}
+{neck_p2}
 
 {attention_line}
 
-  - [-1, 1, Conv, [256, 3, 2]]
+{pan_down_p2_p3}
   - [[-1, 16], 1, Concat, [1]]
-{neck_256_bottom}
+{neck_p3_bottom}
 
-  - [-1, 1, Conv, [512, 3, 2]]
+{pan_down_p3_p4}
   - [[-1, 13], 1, Concat, [1]]
-{neck_512_bottom}
+{neck_p4_bottom}
 
 {detect_line}
 """
