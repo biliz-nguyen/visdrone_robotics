@@ -126,10 +126,12 @@ presets:
       p3: 256
       p4: 384
 
-  # N2b: one targeted recovery test after N2.
-  # Keep the N2 P2 boost, restore part of the coarse P4 capacity, and leave P3 fixed.
-  # Relative to H1 nominal widths: P2 +25%, P3 0%, P4 -12.5%.
-  # scale=n -> effective 40/64/112.
+  # N2b budget-constrained recovery after N2.
+  # The first P4=448 preflight was rejected before training because GFLOPs
+  # exceeded 1.03x H1. Keep P2 boost, restore only 25% of the P4 capacity
+  # removed by N2, and stay inside the declared compute budget.
+  # Relative to H1 nominal widths: P2 +25%, P3 0%, P4 -18.75%.
+  # scale=n -> effective 40/64/104.
   edge27_neck_realloc_v2:
     study: "neck"
     backbone_down: "sprdown"
@@ -142,7 +144,7 @@ presets:
     neck_channels_nominal:
       p2: 160
       p3: 256
-      p4: 448
+      p4: 416
 
   edge27_head_snr_16_8_4:
     study: "head"
