@@ -168,7 +168,7 @@ class RepC3k2(nn.Module):
         c1: int,
         c2: int,
         n: int = 2,
-        shortcut: bool = False,
+        shortcut: bool = True,
         g: int = 1,
         e: float = 0.5,
     ):
@@ -205,10 +205,10 @@ class RepC3k2(nn.Module):
 
 
 def switch_reparameterized_neck_to_deploy(model: nn.Module) -> nn.Module:
-    """Fuse every RepC3k2/RepConvUnit in-place and return the model."""
-    for module in model.modules():
-        if isinstance(module, RepC3k2):
-            module.switch_to_deploy()
+    """Fuse every RepC3k2 in-place and return the model."""
+    blocks = [m for m in model.modules() if isinstance(m, RepC3k2)]
+    for block in blocks:
+        block.switch_to_deploy()
     return model
 
 
