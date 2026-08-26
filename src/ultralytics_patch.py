@@ -32,6 +32,7 @@ def patch_ultralytics(cfg: dict) -> None:
     project = Path(cfg["project_root"])
     copies = {
         project / "src" / "custom_blocks.py": module_dir / "visdrone_custom_blocks.py",
+        project / "src" / "rep_neck.py": module_dir / "visdrone_rep_neck.py",
         project / "src" / "stride_reg_head.py": module_dir / "visdrone_stride_reg_head.py",
         project / "src" / "stride_reg_loss.py": utils_dir / "visdrone_stride_reg_loss.py",
     }
@@ -40,10 +41,8 @@ def patch_ultralytics(cfg: dict) -> None:
 
     _patch_tasks(tasks_py)
 
-    # This branch intentionally keeps the standard localization loss. The
-    # mixed-bin head has its own criterion but does not change TAL/CIoU/cls.
     if cfg["loss_mode"] != "standard":
-        raise ValueError("Head-study branch supports standard loss only")
+        raise ValueError("Research branch supports standard loss only")
 
     for path in [tasks_py, loss_py, *copies.values()]:
         compile(path.read_text(encoding="utf-8"), str(path), "exec")
@@ -54,6 +53,7 @@ def _patch_tasks(tasks_py: Path) -> None:
 
     imports = [
         "from ultralytics.nn.modules.visdrone_custom_blocks import SPRDown, AConv, ECA, CoordAtt, ResidualLiteCA",
+        "from ultralytics.nn.modules.visdrone_rep_neck import RepC3k2",
         "from ultralytics.nn.modules.visdrone_stride_reg_head import StrideRegDetect",
     ]
     idx = text.find("class BaseModel")
@@ -71,7 +71,7 @@ def _patch_tasks(tasks_py: Path) -> None:
     if base_match is None:
         raise RuntimeError("Cannot find base_modules in tasks.py")
     body = base_match.group("body")
-    needed = ["SPRDown", "AConv", "ECA", "CoordAtt", "ResidualLiteCA"]
+    needed = ["SPRDown", "AConv", "ECA", "CoordAtt", "ResidualLiteCA", "RepC3k2"]
     missing = [name for name in needed if not re.search(rf"\b{name}\b", body)]
     if missing:
         insertion = "".join(f"\n            {name}," for name in missing)
