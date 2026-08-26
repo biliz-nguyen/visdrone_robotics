@@ -1,7 +1,7 @@
 # ============================================================
-# YOLOEdge27 — Q1 RESEARCH TRACK / HEAD STUDY
+# YOLOEdge27 — Q1 RESEARCH TRACK
 # Confirmed backbone: one SPR-Down at P4->P5 (S1).
-# Existing S1 5e/50e controls are reused; they are NOT retrained here.
+# H1 direct reg_max=1 is the deployment control for neck studies.
 # ============================================================
 
 preset: "edge27_head_snr_16_8_4"
@@ -18,6 +18,7 @@ presets:
     loss_mode: "standard"
     attention: "none"
     head_mode: "standard"
+    neck_mode: "standard"
 
   edge27_spr_p4p5:
     study: "placement"
@@ -27,6 +28,7 @@ presets:
     loss_mode: "standard"
     attention: "none"
     head_mode: "standard"
+    neck_mode: "standard"
 
   edge27_spr_p3p4:
     study: "placement"
@@ -36,6 +38,7 @@ presets:
     loss_mode: "standard"
     attention: "none"
     head_mode: "standard"
+    neck_mode: "standard"
 
   edge27_spr_p2p3:
     study: "placement"
@@ -45,6 +48,7 @@ presets:
     loss_mode: "standard"
     attention: "none"
     head_mode: "standard"
+    neck_mode: "standard"
 
   edge27_spr_p3p4_p4p5:
     study: "placement"
@@ -54,6 +58,7 @@ presets:
     loss_mode: "standard"
     attention: "none"
     head_mode: "standard"
+    neck_mode: "standard"
 
   edge27_spr_p2p3_p3p4:
     study: "placement"
@@ -63,6 +68,7 @@ presets:
     loss_mode: "standard"
     attention: "none"
     head_mode: "standard"
+    neck_mode: "standard"
 
   edge27_spr_p2p3_p4p5:
     study: "placement"
@@ -72,6 +78,7 @@ presets:
     loss_mode: "standard"
     attention: "none"
     head_mode: "standard"
+    neck_mode: "standard"
 
   edge27_spr_all:
     study: "placement"
@@ -81,6 +88,7 @@ presets:
     loss_mode: "standard"
     attention: "none"
     head_mode: "standard"
+    neck_mode: "standard"
 
   # H1: deployment control. Stock Detect with global reg_max=1 (DFL-free).
   edge27_head_direct_r1:
@@ -91,6 +99,18 @@ presets:
     loss_mode: "standard"
     attention: "none"
     head_mode: "standard"
+    neck_mode: "standard"
+
+  # N1: H1 head + train-rich/deploy-simple reparameterized PAN/FPN neck.
+  edge27_neck_rep_v1:
+    study: "neck"
+    backbone_down: "sprdown"
+    spr_placements: ["p4_p5"]
+    reg_max: 1
+    loss_mode: "standard"
+    attention: "none"
+    head_mode: "standard"
+    neck_mode: "rep"
 
   # H2: primary head hypothesis. Fine P2 keeps 16 bins; coarser levels
   # progressively reduce bins approximately with stride: 16 / 8 / 4.
@@ -103,6 +123,7 @@ presets:
     attention: "none"
     head_mode: "stride_reg"
     head_reg_bins: [16, 8, 4]
+    neck_mode: "standard"
 
   # H3: aggressive tiny-preserving stress test. Keep P2 rich, compress P3/P4.
   edge27_head_hybrid_16_4_1:
@@ -114,9 +135,10 @@ presets:
     attention: "none"
     head_mode: "stride_reg"
     head_reg_bins: [16, 4, 1]
+    neck_mode: "standard"
 
 # -------------------------
-# Fair train protocol. Head screening workflow overrides to 5 epochs.
+# Fair train protocol. Screening workflows override to 5 epochs.
 # -------------------------
 train:
   imgsz: 640
