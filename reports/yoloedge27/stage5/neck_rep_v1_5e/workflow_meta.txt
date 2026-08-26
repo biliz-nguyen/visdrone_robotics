@@ -1,5 +1,5 @@
 branch=research/yoloedge27-neck-rep-v1
-head=f4951b6372621128e87e24e30d70e4b4b4c2b17c
+head=e032be0e84d47e027f3e18ece2a93d4d09398bf8
 screen_root=/home/minh/yoloedge27_experiments/stage5/neck_rep_v1_5e
 variant=N1 reparameterized fusion neck
 base=H1 direct reg1 with S1 SPR P4->P5

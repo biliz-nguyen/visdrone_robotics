@@ -1,0 +1,11 @@
+{
+  "assigner": "TaskAlignedAssigner",
+  "deploy_gflops": 7.9055872,
+  "deploy_params": 1827082,
+  "head": "Detect",
+  "max_abs_diff": 1.9073486328125e-06,
+  "reg_max": 1,
+  "rep_blocks": 5,
+  "train_gflops": 8.1349632,
+  "train_params": 1851402
+}
