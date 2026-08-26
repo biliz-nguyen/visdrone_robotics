@@ -62,11 +62,28 @@ def main():
         assert int(detect.reg_max) == int(cfg["reg_max"])
         assert int(detect.no) == int(detect.nc + 4 * int(cfg["reg_max"]))
 
-    if cfg.get("study") == "head":
+    study = cfg.get("study")
+    neck_mode = cfg.get("neck_mode", "standard")
+    rep_neck_blocks = [m for m in model.model.modules() if m.__class__.__name__ == "RepC3k2"]
+
+    if study == "head":
         assert placements == ["p4_p5"]
         assert cfg["loss_mode"] == "standard"
         assert cfg["attention"] == "none"
+        assert neck_mode == "standard"
         assert cfg.get("pretrained", False) is False
+
+    if study == "neck":
+        assert placements == ["p4_p5"]
+        assert cfg["loss_mode"] == "standard"
+        assert cfg["attention"] == "none"
+        assert head_mode == "standard"
+        assert int(cfg["reg_max"]) == 1
+        assert cfg.get("pretrained", False) is False
+        if neck_mode == "rep":
+            assert len(rep_neck_blocks) == 5, f"Expected 5 RepC3k2 neck blocks, got {len(rep_neck_blocks)}"
+        else:
+            assert len(rep_neck_blocks) == 0
 
     criterion = model.model.init_criterion()
     assigner_name = criterion.assigner.__class__.__name__
@@ -100,9 +117,11 @@ def main():
     print("=" * 90)
     print("Preset:", cfg["preset"])
     print("Experiment:", cfg["experiment_tag"])
-    print("Study:", cfg.get("study"))
+    print("Study:", study)
     print("SPR placements:", placements)
     print("Stage modules:", stage_modules)
+    print("Neck mode:", neck_mode)
+    print("RepC3k2 count:", len(rep_neck_blocks))
     print("Head:", detect.__class__.__name__)
     print("Head mode:", head_mode)
     print("Regression bins P2/P3/P4:", bins)
