@@ -1,5 +1,5 @@
 branch=research/yoloedge27-neck-realloc-v2
-head=492b99b06a2fba8d44ea8e6f67696c7d56799f57
+head=d1f1f70aa97931a7c180b7fbe79fe542ba639ef9
 screen_root=/home/minh/yoloedge27_experiments/stage7/neck_realloc_v2_5e
 variant=N2b moderate fine-scale neck reallocation
 base=H1 direct reg1 with S1 SPR P4->P5
