@@ -195,12 +195,17 @@ rep_count = sum(x.__class__.__name__ == 'RepC3k2' for x in m.modules())
 assert rep_count == 5
 train_params = sum(p.numel() for p in m.parameters())
 x = torch.randn(1, 3, int(cfg['train']['imgsz']), int(cfg['train']['imgsz']))
+
+# IMPORTANT: THOP registers total_ops/total_params as module buffers. Clone the
+# pristine model into m2 BEFORE profiling m, otherwise those profiling buffers
+# leak into state_dict() and strict loading fails with unexpected keys.
+m2 = YOLO(str(model_yaml)).model.float().cpu().eval()
+m2.load_state_dict(m.state_dict(), strict=True)
+
 with torch.no_grad():
     y0 = m(x)
     train_macs, _ = profile(m, inputs=(x,), verbose=False)
 
-m2 = YOLO(str(model_yaml)).model.float().cpu().eval()
-m2.load_state_dict(m.state_dict(), strict=True)
 switch_reparameterized_neck_to_deploy(m2)
 flags = [bool(getattr(z, 'deploy', False)) for z in m2.modules() if z.__class__.__name__ == 'RepC3k2']
 assert len(flags) == 5 and all(flags)
