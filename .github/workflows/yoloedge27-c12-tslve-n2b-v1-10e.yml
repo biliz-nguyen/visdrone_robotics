@@ -10,6 +10,8 @@ on:
       - 'src/ultralytics_patch.py'
       - 'scripts/train.py'
       - 'scripts/run_c12_tslve_n2b_10e.py'
+      - 'scripts/run_c12_phase_isolated.py'
+      - 'scripts/compare_c12_isolated.py'
       - 'tests/test_scale_velocity_loss.py'
       - 'src/model_builder.py'
   workflow_dispatch:
@@ -40,7 +42,7 @@ jobs:
           ref: research/yoloedge27-c12-tslve-n2b-v1
           fetch-depth: 0
 
-      - name: Verify C12 mechanism and paired protocol source
+      - name: Verify C12 mechanism and isolated paired protocol source
         shell: bash
         run: |
           set -euo pipefail
@@ -49,6 +51,7 @@ jobs:
           grep -q 'edge27_neck_realloc_v2:' config/experiment.yaml
           grep -q 'p4: 416' config/experiment.yaml
           grep -q 'class TemporalScaleVelocityDetectionLoss' src/scale_velocity_loss.py
+          grep -q '_normalize_hyp_for_loss' src/scale_velocity_loss.py
           grep -q 'compute_velocity_weights' src/scale_velocity_loss.py
           grep -q 'tiny_thr=16.0' src/ultralytics_patch.py
           grep -q 'small_thr=32.0' src/ultralytics_patch.py
@@ -56,7 +59,8 @@ jobs:
           grep -q 'velocity_alpha=0.50' src/ultralytics_patch.py
           grep -q 'weight_min=0.75' src/ultralytics_patch.py
           grep -q 'weight_max=1.25' src/ultralytics_patch.py
-          grep -q 'paired 10e' scripts/run_c12_tslve_n2b_10e.py
+          grep -q 'fresh_process=true' scripts/run_c12_phase_isolated.py
+          grep -q 'process_isolation' scripts/compare_c12_isolated.py
           grep -q 'c12_scale_dynamics.jsonl' scripts/train.py
           test -f reports/yoloedge27/stage7/neck_realloc_v2_5e/neck_realloc_v2_5e_eval.json
           "$PYTHON_BIN" -m py_compile \
@@ -64,6 +68,8 @@ jobs:
             src/ultralytics_patch.py \
             scripts/train.py \
             scripts/run_c12_tslve_n2b_10e.py \
+            scripts/run_c12_phase_isolated.py \
+            scripts/compare_c12_isolated.py \
             tests/test_scale_velocity_loss.py
 
       - name: Pre-flight GPU and dataset
@@ -120,11 +126,14 @@ jobs:
             tests/test_neck_realloc.py \
             tests/test_scale_velocity_loss.py
 
-      - name: Train paired N2b control and C12 TSLVE candidate for 10 epochs each
+      - name: Train isolated N2b control 10e
         shell: bash
         run: |
           set -euo pipefail
-          "$PYTHON_BIN" scripts/run_c12_tslve_n2b_10e.py \
+          rm -rf "$SCREEN_ROOT" "$REPORT_DIR"
+          mkdir -p "$SCREEN_ROOT" "$REPORT_DIR"
+          "$PYTHON_BIN" scripts/run_c12_phase_isolated.py \
+            --phase control_n2b_10e \
             --dataset "$DATASET" \
             --screen-root "$SCREEN_ROOT" \
             --report-dir "$REPORT_DIR" \
@@ -132,6 +141,27 @@ jobs:
             --batch 8 \
             --nbs 16 \
             --workers 4
+
+      - name: Train isolated C12 TSLVE candidate 10e
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/run_c12_phase_isolated.py \
+            --phase candidate_c12_tslve_10e \
+            --dataset "$DATASET" \
+            --screen-root "$SCREEN_ROOT" \
+            --report-dir "$REPORT_DIR" \
+            --epochs 10 \
+            --batch 8 \
+            --nbs 16 \
+            --workers 4
+
+      - name: Compare isolated paired results
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/compare_c12_isolated.py \
+            --report-dir "$REPORT_DIR"
 
       - name: Commit compact C12 paired reports
         if: ${{ always() }}
@@ -144,6 +174,7 @@ jobs:
             echo "head=$(git rev-parse HEAD)"
             echo "mechanism=Temporal Scale Learning-Velocity Equalization"
             echo "comparison=paired_N2b_10e_vs_C12_10e"
+            echo "process_isolation=true"
             echo "base=C1_SPR+C2_N2b+stock_Detect_direct_reg1"
             echo "scale_groups=tiny_lt16,small_16_32,regular_ge32"
             echo "calibration=epoch1_stock"
@@ -169,6 +200,6 @@ jobs:
             echo "No C12 report changes to commit"
             exit 0
           fi
-          git commit -m "Record C12 TSLVE paired 10e screening"
+          git commit -m "Record C12 TSLVE isolated paired 10e screening"
           git pull --rebase origin research/yoloedge27-c12-tslve-n2b-v1
           git push origin HEAD:research/yoloedge27-c12-tslve-n2b-v1
