@@ -1,0 +1,206 @@
+{
+  "purpose": "C10 pedestrian-only quality-aware training-only P2 supervision on frozen N2b; 5e screen only.",
+  "mechanism": {
+    "name": "Pedestrian-Only P2 Quality-Tempered Auxiliary Supervision (Ped-P2-QTAS)",
+    "changed_scope": "training loss only; existing P2 pedestrian classification logits",
+    "target": "unique stride-4 center cell for tiny pedestrian targets only",
+    "people_auxiliary": false,
+    "quality": "detached IoU of current prediction at the same P2 center cell",
+    "soft_target": "0.5 + 0.5 * sqrt(IoU_detached)",
+    "target_floor": 0.5,
+    "quality_gamma": 0.5,
+    "tiny_min_side_px": 16.0,
+    "focus_classes": [
+      "pedestrian"
+    ],
+    "aux_weight": 0.1,
+    "aux_loss": "BCEWithLogits to quality-aware soft target",
+    "regression_aux_gradient": false,
+    "main_assigner": "stock TAL exact",
+    "main_loss": "stock box/cls/direct-reg1 loss exact plus pedestrian-only auxiliary cls term",
+    "inference_graph_change": false,
+    "deployment_overhead": "0 params / 0 GFLOPs / 0 nodes"
+  },
+  "protocol": {
+    "epochs": 5,
+    "batch": 8,
+    "nbs": 16,
+    "workers": 4,
+    "imgsz": 640,
+    "seed": 42,
+    "pretrained": false,
+    "architecture": "frozen C1 SPR + C2 N2b + stock direct-reg1 Detect",
+    "test_dev_used": false
+  },
+  "control": {
+    "id": "N2b-5e-stock-loss",
+    "best_eval": {
+      "precision": 0.32377698450992576,
+      "recall": 0.19778084383604064,
+      "map50": 0.14413927475479643,
+      "map50_95": 0.0717339895878833
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.13589282226094615,
+        "recall": 0.34882406151062867,
+        "map50": 0.1476392765499091,
+        "map50_95": 0.05142323744247081
+      },
+      "people": {
+        "precision": 0.4033307189496828,
+        "recall": 0.13014634146341464,
+        "map50": 0.1216662127680507,
+        "map50_95": 0.03604498280785341
+      }
+    },
+    "focus_map50_95_mean": 0.04373411012516211,
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    }
+  },
+  "c9_reference": {
+    "status": "complete",
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    },
+    "epoch5": {
+      "precision": 0.32371,
+      "recall": 0.20699,
+      "map50": 0.14166,
+      "map50_95": 0.06938
+    },
+    "best_eval": {
+      "precision": 0.32571063964428876,
+      "recall": 0.20532528286485915,
+      "map50": 0.14230555100916456,
+      "map50_95": 0.06965461134042435
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.13301699952225246,
+        "recall": 0.39111261872455905,
+        "map50": 0.16115617029060922,
+        "map50_95": 0.05313553434963889
+      },
+      "people": {
+        "precision": 0.25127123159491305,
+        "recall": 0.21326829268292682,
+        "map50": 0.11665542714844329,
+        "map50_95": 0.031319773592146674
+      }
+    },
+    "focus_map50_95_mean": 0.04222765397089279,
+    "speed_ms_best_eval": {
+      "preprocess": 0.15887614417275525,
+      "inference": 1.31441101824828,
+      "loss": 0.0005376168037467317,
+      "postprocess": 2.6859726240948403
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage19/c9_p2_qaux_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.pt"
+  },
+  "candidate": {
+    "status": "complete",
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    },
+    "epoch5": {
+      "precision": 0.31053,
+      "recall": 0.20411,
+      "map50": 0.13587,
+      "map50_95": 0.06683
+    },
+    "best_eval": {
+      "precision": 0.3109038763205999,
+      "recall": 0.20409401719007084,
+      "map50": 0.13613225830243714,
+      "map50_95": 0.0671815869295517
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.09755596989954614,
+        "recall": 0.4337403889642696,
+        "map50": 0.16773914088959488,
+        "map50_95": 0.05458110950453041
+      },
+      "people": {
+        "precision": 0.3593273162541102,
+        "recall": 0.1373658536585366,
+        "map50": 0.11342104545198492,
+        "map50_95": 0.034210756210971395
+      }
+    },
+    "focus_map50_95_mean": 0.044395932857750904,
+    "speed_ms_best_eval": {
+      "preprocess": 0.14590434487543158,
+      "inference": 1.3232989762646021,
+      "loss": 0.00047841058071786845,
+      "postprocess": 2.662518175175203
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage20/c10_ped_qaux_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.pt"
+  },
+  "comparison": {
+    "delta_candidate_minus_n2b": {
+      "precision": -0.012873108189325855,
+      "recall": 0.006313173354030199,
+      "map50": -0.008007016452359295,
+      "map50_95": -0.004552402658331595
+    },
+    "delta_focus_candidate_minus_n2b": {
+      "pedestrian": {
+        "precision": -0.03833685236140001,
+        "recall": 0.08491632745364092,
+        "map50": 0.020099864339685775,
+        "map50_95": 0.0031578720620596065
+      },
+      "people": {
+        "precision": -0.044003402695572624,
+        "recall": 0.007219512195121958,
+        "map50": -0.008245167316065782,
+        "map50_95": -0.0018342265968820173
+      }
+    },
+    "delta_focus_map50_95_mean": 0.0006618227325887946,
+    "same_params": true,
+    "same_gflops": true
+  },
+  "comparison_vs_c9": {
+    "delta_candidate_minus_c9": {
+      "precision": -0.014806763323688854,
+      "recall": -0.0012312656747883177,
+      "map50": -0.0061732927067274235,
+      "map50_95": -0.0024730244108726457
+    },
+    "delta_focus_candidate_minus_c9": {
+      "pedestrian": {
+        "precision": -0.03546102962270632,
+        "recall": 0.04262777023971054,
+        "map50": 0.00658297059898566,
+        "map50_95": 0.0014455751548915208
+      },
+      "people": {
+        "precision": 0.10805608465919714,
+        "recall": -0.07590243902439023,
+        "map50": -0.0032343816964583716,
+        "map50_95": 0.002890982618824721
+      }
+    },
+    "delta_focus_map50_95_mean": 0.0021682788868581174
+  },
+  "promotion": {
+    "promote_to_50e": false,
+    "rule": "overall mAP50-95 >= N2b; mAP50 loss <=0.1pp; focus mean >= N2b; each focus class no worse by >0.1pp; identical deploy complexity; ONNX pass"
+  },
+  "caution": "single local seed, deterministic=false, 5 epochs only; C10 changes only C9 focus_classes from pedestrian+people to pedestrian-only."
+}
