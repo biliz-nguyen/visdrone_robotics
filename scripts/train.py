@@ -73,6 +73,53 @@ def _install_c11_aux_schedule(model, cfg: dict) -> None:
     model.add_callback("on_train_epoch_start", on_train_epoch_start)
 
 
+def _install_c12_scale_velocity(model, cfg: dict) -> None:
+    mode = cfg.get("c12_scale_velocity_mode", "standard")
+    if mode == "standard":
+        return
+    if mode != "tslve_cls":
+        raise ValueError(f"Unsupported c12_scale_velocity_mode={mode!r}")
+    if cfg.get("c11_aux_schedule", "constant") != "constant":
+        raise ValueError("C12 cannot run together with C11 auxiliary scheduling")
+
+    dynamics_path = Path(cfg["state_dir"]) / "c12_scale_dynamics.jsonl"
+    dynamics_path.parent.mkdir(parents=True, exist_ok=True)
+    if dynamics_path.exists():
+        dynamics_path.unlink()
+
+    def get_criterion(trainer):
+        criterion = getattr(trainer.model, "criterion", None)
+        if criterion is None:
+            criterion = trainer.model.init_criterion()
+            trainer.model.criterion = criterion
+        if criterion.__class__.__name__ != "TemporalScaleVelocityDetectionLoss":
+            raise RuntimeError(
+                "C12 TSLVE requires TemporalScaleVelocityDetectionLoss, got "
+                f"{criterion.__class__.__name__}"
+            )
+        return criterion
+
+    def on_train_epoch_start(trainer):
+        criterion = get_criterion(trainer)
+        criterion.set_epoch(int(trainer.epoch))
+        print(
+            f"C12_TSLVE_EPOCH_START epoch={int(trainer.epoch) + 1}/{int(trainer.epochs)} "
+            f"mode={'calibration' if int(trainer.epoch) == 0 else 'adaptive'}"
+        )
+
+    def on_train_epoch_end(trainer):
+        criterion = get_criterion(trainer)
+        summary = criterion.epoch_summary()
+        summary["epoch"] = int(trainer.epoch) + 1
+        summary["epochs"] = int(trainer.epochs)
+        with dynamics_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(summary, sort_keys=True) + "\n")
+        print("C12_TSLVE_EPOCH_SUMMARY", json.dumps(summary, sort_keys=True))
+
+    model.add_callback("on_train_epoch_start", on_train_epoch_start)
+    model.add_callback("on_train_epoch_end", on_train_epoch_end)
+
+
 def main():
     cfg, data_yaml, model_yaml = prepare_runtime()
 
@@ -118,6 +165,7 @@ def main():
     )
     print("Device:", device)
     print("C11 aux schedule:", cfg.get("c11_aux_schedule", "constant"))
+    print("C12 scale velocity:", cfg.get("c12_scale_velocity_mode", "standard"))
     print("=" * 90)
 
     model = YOLO(
@@ -127,6 +175,7 @@ def main():
     # IMPORTANT:
     # no model.load("yolo11n.pt")
     _install_c11_aux_schedule(model, cfg)
+    _install_c12_scale_velocity(model, cfg)
 
     model.train(
         data=str(data_yaml),
@@ -234,6 +283,8 @@ def main():
             cfg["loss_mode"],
         "c11_aux_schedule":
             cfg.get("c11_aux_schedule", "constant"),
+        "c12_scale_velocity_mode":
+            cfg.get("c12_scale_velocity_mode", "standard"),
     }
 
     state = save_state(
