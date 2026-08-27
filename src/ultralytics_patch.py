@@ -87,6 +87,21 @@ def patch_ultralytics(cfg: dict) -> None:
     for path in [tasks_py, loss_py, *copies.values()]:
         compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
+    # C12 paired screening patches stock control and TSLVE candidate sequentially
+    # inside one parent Python process. Purge only the already-loaded Ultralytics
+    # modules for the C12 candidate so the freshly patched tasks.py is imported
+    # instead of reusing the control's cached v8DetectionLoss class.
+    if c12_mode == "tslve_cls":
+        import importlib
+        import sys
+
+        stale = [name for name in tuple(sys.modules) if name == "ultralytics" or name.startswith("ultralytics.")]
+        for name in sorted(stale, key=len, reverse=True):
+            sys.modules.pop(name, None)
+        importlib.invalidate_caches()
+        if stale:
+            print(f"C12_ULTRALYTICS_CACHE_PURGE modules={len(stale)}")
+
 
 def _insert_into_frozenset(text: str, set_name: str, names: list[str]) -> str:
     """Insert symbols into a named frozenset assignment in Ultralytics tasks.py."""
