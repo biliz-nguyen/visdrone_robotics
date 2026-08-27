@@ -1,0 +1,24 @@
+HEAD is now at 9a414a82 Fix QNN export with built-in provider wheels (#24618)
+INFO: batch != nbs. Ultralytics will use gradient accumulation so the nominal batch remains nbs.
+Official VisDrone -> YOLO cache: /home/minh/Desktop/project/visdrone_local_project/dataset/.visdrone_yolo
+  train: images=6471 objects=343202 ignored=10345 duplicates_removed=3
+  val: images=548 objects=38759 ignored=1410 duplicates_removed=0
+  test: images=1610 objects=75102 ignored=2445 duplicates_removed=0
+Ultralytics 8.4.56 🚀 Python-3.10.20 torch-2.5.1+cu124 CPU (Intel Core i7-14700K)
+model_spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42 summary (fused): 107 layers, 1,448,580 parameters, 0 gradients, 6.0 GFLOPs
+
+[34m[1mPyTorch:[0m starting from '/home/minh/yoloedge27_experiments/stage12/c3_taq_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.pt' with input shape (1, 3, 640, 640) BCHW and output shape(s) (1, 14, 33600) (3.1 MB)
+
+[34m[1mONNX:[0m starting export with onnx 1.22.0 opset 12...
+[34m[1mONNX:[0m slimming with onnxslim 0.1.96...
+[34m[1mONNX:[0m export success ✅ 0.6s, saved as '/home/minh/yoloedge27_experiments/stage12/c3_taq_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.onnx' (6.3 MB)
+
+Export complete (0.8s)
+Results saved to [1m/home/minh/yoloedge27_experiments/stage12/c3_taq_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.onnx[0m
+Predict:         yolo predict task=detect model=/home/minh/yoloedge27_experiments/stage12/c3_taq_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.onnx imgsz=640 
+Validate:        yolo val task=detect model=/home/minh/yoloedge27_experiments/stage12/c3_taq_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.onnx imgsz=640 data=/home/minh/yoloedge27_experiments/stage12/c3_taq_n2b_v1_5e/generated/visdrone_local.yaml  
+Visualize:       https://netron.app
+✅ ONNX: /home/minh/yoloedge27_experiments/stage12/c3_taq_n2b_v1_5e/outputs/exports/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/best.onnx
+
+EXPORT DONE
+onnx: /home/minh/yoloedge27_experiments/stage12/c3_taq_n2b_v1_5e/outputs/exports/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/best.onnx

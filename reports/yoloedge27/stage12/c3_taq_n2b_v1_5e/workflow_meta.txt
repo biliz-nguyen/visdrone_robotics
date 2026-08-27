@@ -1,0 +1,9 @@
+branch=research/yoloedge27-c3-taq-n2b-v1
+head=dcddc842b8e4530e083ced2a5b1c0ca8c5cc7e99
+mechanism=TAQ exact prior-positive schedule on frozen N2b
+base=C1 SPR + C2 N2b + direct reg1
+tiny_min_side=16.0
+beta_floor=4.0
+retuned_for_n2b=false
+epochs=5
+test_dev_used=false
