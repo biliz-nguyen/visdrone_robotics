@@ -1,0 +1,128 @@
+{
+  "purpose": "C4 tiny-gated NWD on frozen N2b; 5e screening only, not final paper evidence.",
+  "mechanism": {
+    "name": "Tiny-Gated NWD Localization (TGNWD)",
+    "changed_scope": "training-time BboxLoss only",
+    "assigner": "stock TAL exact",
+    "tiny_min_side": 16.0,
+    "c": 12.8,
+    "ciou_weight": 0.75,
+    "nwd_weight": 0.25,
+    "non_tiny_behavior": "stock CIoU exact",
+    "inference_overhead": "none"
+  },
+  "protocol": {
+    "epochs": 5,
+    "batch": 8,
+    "nbs": 16,
+    "workers": 4,
+    "imgsz": 640,
+    "seed": 42,
+    "pretrained": false,
+    "architecture": "frozen C1 SPR + C2 N2b + direct reg1",
+    "test_dev_used": false
+  },
+  "control": {
+    "id": "N2b-5e-stock-loss",
+    "best_eval": {
+      "precision": 0.32377698450992576,
+      "recall": 0.19778084383604064,
+      "map50": 0.14413927475479643,
+      "map50_95": 0.0717339895878833
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.13589282226094615,
+        "recall": 0.34882406151062867,
+        "map50": 0.1476392765499091,
+        "map50_95": 0.05142323744247081
+      },
+      "people": {
+        "precision": 0.4033307189496828,
+        "recall": 0.13014634146341464,
+        "map50": 0.1216662127680507,
+        "map50_95": 0.03604498280785341
+      }
+    },
+    "focus_map50_95_mean": 0.04373411012516211,
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    }
+  },
+  "candidate": {
+    "status": "complete",
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    },
+    "epoch5": {
+      "precision": 0.31305,
+      "recall": 0.19186,
+      "map50": 0.13461,
+      "map50_95": 0.06704
+    },
+    "best_eval": {
+      "precision": 0.3145098341845976,
+      "recall": 0.1918127068516426,
+      "map50": 0.13481902493270928,
+      "map50_95": 0.06722190859559214
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.1334682898980025,
+        "recall": 0.32926277702397105,
+        "map50": 0.13746884025059317,
+        "map50_95": 0.047759697827170704
+      },
+      "people": {
+        "precision": 0.3370611573248889,
+        "recall": 0.16039024390243903,
+        "map50": 0.11476751257218971,
+        "map50_95": 0.03262410690740346
+      }
+    },
+    "focus_map50_95_mean": 0.04019190236728708,
+    "speed_ms_best_eval": {
+      "preprocess": 0.14669049269834603,
+      "inference": 1.331923374089184,
+      "loss": 0.0004692864950167832,
+      "postprocess": 2.4480505291962698
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage14/c4_tiny_nwd_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.pt"
+  },
+  "comparison": {
+    "delta_candidate_minus_n2b": {
+      "precision": -0.009267150325328155,
+      "recall": -0.005968136984398048,
+      "map50": -0.009320249822087151,
+      "map50_95": -0.004512080992291154
+    },
+    "delta_focus_candidate_minus_n2b": {
+      "pedestrian": {
+        "precision": -0.0024245323629436544,
+        "recall": -0.019561284486657615,
+        "map50": -0.010170436299315938,
+        "map50_95": -0.003663539615300103
+      },
+      "people": {
+        "precision": -0.06626956162479392,
+        "recall": 0.03024390243902439,
+        "map50": -0.006898700195860988,
+        "map50_95": -0.0034208759004499545
+      }
+    },
+    "delta_focus_map50_95_mean": -0.003542207757875032,
+    "same_params": true,
+    "same_gflops": true
+  },
+  "promotion": {
+    "promote_to_50e": false,
+    "rule": "overall mAP50-95 >= N2b; mAP50 loss <=0.1pp; focus mean mAP50-95 >= N2b; each focus class no worse by >0.1pp; identical complexity; ONNX pass"
+  },
+  "caution": "single local seed, deterministic=false, 5 epochs only; promote only if locked rule passes."
+}

@@ -1,0 +1,12 @@
+branch=research/yoloedge27-c4-tiny-nwd-n2b-v1
+head=45fc196bfe3055d45ab0c5c05ecc000a3ca89641
+mechanism=tiny-gated NWD blended into CIoU only below 16px
+base=C1 SPR + C2 N2b + direct reg1
+assigner=stock_TAL_exact
+c=12.8
+tiny_min_side=16.0
+ciou_weight=0.75
+nwd_weight=0.25
+non_tiny=stock_CIoU_exact
+epochs=5
+test_dev_used=false
