@@ -1,0 +1,3 @@
+best_pt=/home/minh/yoloedge27_experiments/stage17/c7_p2_reg_refine_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.pt
+control_eval=/home/minh/actions-runner-visdrone/_work/visdrone_robotics/visdrone_robotics/reports/yoloedge27/stage7/neck_realloc_v2_5e/neck_realloc_v2_5e_eval.json
+checkpoint_note=runner-local only

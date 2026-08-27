@@ -1,0 +1,13 @@
+branch=research/yoloedge27-c7-p2-reg-refine-n2b-v1
+head=4e04ac754fdc7a289cc969e00379645b1c20fef4
+mechanism=P2 regression-only DW3x3+PW1x1 residual refinement
+base=C1 SPR + C2 N2b + direct reg1
+assigner=stock_TAL_exact
+loss=stock
+alpha_init=0.10
+regression_path=refined_P2_stock_P3_P4
+classification_path=stock_P2_P3_P4
+max_params=1500000
+max_gflops=6.30
+epochs=5
+test_dev_used=false
