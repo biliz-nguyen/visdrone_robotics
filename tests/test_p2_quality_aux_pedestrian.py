@@ -21,7 +21,9 @@ def _criterion_stub():
 
 def test_c10_pedestrian_only_ignores_people_target():
     criterion = _criterion_stub()
-    scores = torch.zeros(1, 10, 64, requires_grad=True)
+    # Use a non-zero logit. At IoU=0 the C10 soft target is exactly 0.5,
+    # and logit=0 would legitimately give zero BCE gradient.
+    scores = torch.full((1, 10, 64), -1.0, requires_grad=True)
     boxes = torch.zeros(1, 4, 64, requires_grad=True)
     preds = {
         "scores": scores,
