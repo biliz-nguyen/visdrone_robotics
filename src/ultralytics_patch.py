@@ -31,12 +31,23 @@ def patch_ultralytics(cfg: dict) -> None:
 
     c8_aux_mode = cfg.get("c8_aux_mode", "standard")
     c9_aux_mode = cfg.get("c9_aux_mode", "standard")
+    c12_mode = cfg.get("c12_scale_velocity_mode", "standard")
     if c8_aux_mode not in {"standard", "tiny_center"}:
         raise ValueError(f"Unsupported c8_aux_mode={c8_aux_mode!r}")
     if c9_aux_mode not in {"standard", "quality_center"}:
         raise ValueError(f"Unsupported c9_aux_mode={c9_aux_mode!r}")
-    if c8_aux_mode != "standard" and c9_aux_mode != "standard":
-        raise ValueError("C8 and C9/C10 auxiliary modes are mutually exclusive")
+    if c12_mode not in {"standard", "tslve_cls"}:
+        raise ValueError(f"Unsupported c12_scale_velocity_mode={c12_mode!r}")
+
+    active_training_losses = sum(
+        [
+            c8_aux_mode != "standard",
+            c9_aux_mode != "standard",
+            c12_mode != "standard",
+        ]
+    )
+    if active_training_losses > 1:
+        raise ValueError("C8/C9/C10/C11/C12 training-loss experiments are mutually exclusive")
 
     quality_focus_classes = tuple(int(x) for x in cfg.get("c9_focus_classes", (5, 6)))
     if c9_aux_mode == "quality_center":
@@ -45,12 +56,12 @@ def patch_ultralytics(cfg: dict) -> None:
         if any(x < 0 or x >= 10 for x in quality_focus_classes):
             raise ValueError(f"Invalid c9_focus_classes={quality_focus_classes!r}")
 
-    aux_active = c8_aux_mode != "standard" or c9_aux_mode != "standard"
-    if aux_active:
+    training_loss_active = active_training_losses > 0
+    if training_loss_active:
         if any(bool(cfg.get(k, False)) for k in ("c5_p2_refine", "c6_p2_cls_refine", "c7_p2_reg_refine")):
-            raise ValueError("C8/C9/C10 auxiliary supervision is locked to the frozen stock N2b head")
+            raise ValueError("Training-only loss experiments are locked to the frozen stock N2b head")
         if int(cfg.get("reg_max", 1)) != 1:
-            raise ValueError("C8/C9/C10 auxiliary supervision is locked to direct reg_max=1")
+            raise ValueError("Training-only loss experiments are locked to direct reg_max=1")
 
     project = Path(cfg["project_root"])
     copies = {
@@ -63,6 +74,7 @@ def patch_ultralytics(cfg: dict) -> None:
         project / "src" / "stride_reg_loss.py": utils_dir / "visdrone_stride_reg_loss.py",
         project / "src" / "p2_aux_loss.py": utils_dir / "visdrone_p2_aux_loss.py",
         project / "src" / "p2_quality_aux_loss.py": utils_dir / "visdrone_p2_quality_aux_loss.py",
+        project / "src" / "scale_velocity_loss.py": utils_dir / "visdrone_scale_velocity_loss.py",
     }
     for src, dst in copies.items():
         shutil.copy2(src, dst)
@@ -154,7 +166,19 @@ def _patch_tasks(tasks_py: Path, cfg: dict) -> None:
         "        return E2ELoss(self) if getattr(self, \"end2end\", False) else v8DetectionLoss(self)\n"
     )
 
-    if cfg.get("c9_aux_mode", "standard") == "quality_center":
+    if cfg.get("c12_scale_velocity_mode", "standard") == "tslve_cls":
+        criterion_new = (
+            "    def init_criterion(self):\n"
+            "        \"\"\"Initialize the loss criterion for the DetectionModel.\"\"\"\n"
+            "        if self.model[-1].__class__.__name__ == \"StrideRegDetect\":\n"
+            "            from ultralytics.utils.visdrone_stride_reg_loss import StrideRegDetectionLoss\n"
+            "            return StrideRegDetectionLoss(self)\n"
+            "        if getattr(self, \"end2end\", False):\n"
+            "            return E2ELoss(self)\n"
+            "        from ultralytics.utils.visdrone_scale_velocity_loss import TemporalScaleVelocityDetectionLoss\n"
+            "        return TemporalScaleVelocityDetectionLoss(self, tiny_thr=16.0, small_thr=32.0, ema_beta=0.95, velocity_alpha=0.50, weight_min=0.75, weight_max=1.25)\n"
+        )
+    elif cfg.get("c9_aux_mode", "standard") == "quality_center":
         focus_classes_literal = repr(tuple(int(x) for x in cfg.get("c9_focus_classes", (5, 6))))
         criterion_new = (
             "    def init_criterion(self):\n"
