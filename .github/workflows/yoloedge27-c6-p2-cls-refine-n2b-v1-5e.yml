@@ -1,0 +1,166 @@
+name: YOLOEdge27 C6 P2ClsRefine N2b 5e Screen
+
+on:
+  push:
+    branches:
+      - research/yoloedge27-c6-p2-cls-refine-n2b-v1
+    paths:
+      - '.github/workflows/yoloedge27-c6-p2-cls-refine-n2b-v1-5e.yml'
+      - 'src/p2_refine.py'
+      - 'src/p2_cls_head.py'
+      - 'src/ultralytics_patch.py'
+      - 'src/model_builder.py'
+      - 'tests/test_p2_cls_head.py'
+      - 'scripts/run_c6_p2_cls_refine_n2b_test.py'
+  workflow_dispatch:
+
+concurrency:
+  group: yoloedge27-c6-p2-cls-refine-n2b-v1-5e
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  c6-p2-cls-refine-n2b-5e:
+    runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
+    timeout-minutes: 240
+    env:
+      CUDA_VISIBLE_DEVICES: "0"
+      PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
+      DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
+      SCREEN_ROOT: /home/minh/yoloedge27_experiments/stage16/c6_p2_cls_refine_n2b_v1_5e
+      REPORT_DIR: reports/yoloedge27/stage16/c6_p2_cls_refine_n2b_v1_5e
+      PYTHONPATH: ${{ github.workspace }}/third_party/ultralytics:${{ github.workspace }}
+
+    steps:
+      - name: Checkout C6 P2ClsRefine branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/yoloedge27-c6-p2-cls-refine-n2b-v1
+          fetch-depth: 0
+
+      - name: Verify classification-only mechanism and frozen base
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "HEAD=$(git rev-parse HEAD)"
+          grep -q 'edge27_neck_realloc_v2:' config/experiment.yaml
+          grep -q 'p4: 416' config/experiment.yaml
+          grep -q 'class P2ClsDetect' src/p2_cls_head.py
+          grep -q 'box_head\[i\](x\[i\])' src/p2_cls_head.py
+          grep -q 'cls_inputs = \[self.p2_cls_refine(x\[0\]), x\[1\], x\[2\]\]' src/p2_cls_head.py
+          grep -q 'P2ClsDetect' src/model_builder.py
+          grep -q '_detect_line(cfg, \[19, 22, 25\])' src/model_builder.py
+          test -f reports/yoloedge27/stage7/neck_realloc_v2_5e/neck_realloc_v2_5e_eval.json
+          "$PYTHON_BIN" -m py_compile \
+            src/p2_refine.py \
+            src/p2_cls_head.py \
+            src/ultralytics_patch.py \
+            src/model_builder.py \
+            scripts/run_c6_p2_cls_refine_n2b_test.py \
+            tests/test_p2_cls_head.py
+
+      - name: Pre-flight GPU and dataset
+        shell: bash
+        run: |
+          set -euo pipefail
+          nvidia-smi
+          "$PYTHON_BIN" - <<'PY'
+          import torch
+          print('Torch:', torch.__version__)
+          print('CUDA:', torch.version.cuda)
+          assert torch.cuda.is_available()
+          print('GPU:', torch.cuda.get_device_name(0))
+          PY
+          test -d "$DATASET/VisDrone2019-DET-train/images"
+          test -d "$DATASET/VisDrone2019-DET-val/images"
+
+      - name: Bootstrap local config
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$SCREEN_ROOT"
+          mkdir -p "$SCREEN_ROOT" "$REPORT_DIR"
+          cat > config/local.yaml <<EOF
+          dataset_root: "$DATASET"
+          dataset_format: "visdrone_official"
+          train_images: "VisDrone2019-DET-train/images"
+          train_annotations: "VisDrone2019-DET-train/annotations"
+          val_images: "VisDrone2019-DET-val/images"
+          val_annotations: "VisDrone2019-DET-val/annotations"
+          test_images: "VisDrone2019-DET-test-dev/images"
+          test_annotations: "VisDrone2019-DET-test-dev/annotations"
+          test_image: ""
+          runs_dir: "$SCREEN_ROOT/runs"
+          state_dir: "$SCREEN_ROOT/state"
+          outputs_dir: "$SCREEN_ROOT/outputs"
+          generated_dir: "$SCREEN_ROOT/generated"
+          EOF
+
+      - name: Setup pinned dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON_BIN="$PYTHON_BIN" bash setup_local.sh
+
+      - name: Unit tests
+        shell: bash
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" -m pytest -q \
+            tests/test_sprdown.py \
+            tests/test_neck_realloc.py \
+            tests/test_p2_refine.py \
+            tests/test_p2_cls_head.py
+
+      - name: Train and evaluate P2ClsRefine on frozen N2b
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/run_c6_p2_cls_refine_n2b_test.py \
+            --dataset "$DATASET" \
+            --screen-root "$SCREEN_ROOT" \
+            --report-dir "$REPORT_DIR" \
+            --epochs 5 \
+            --batch 8 \
+            --nbs 16 \
+            --workers 4
+
+      - name: Commit compact C6 reports
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$REPORT_DIR"
+          {
+            echo "branch=research/yoloedge27-c6-p2-cls-refine-n2b-v1"
+            echo "head=$(git rev-parse HEAD)"
+            echo "mechanism=P2 classification-only DW3x3+PW1x1 residual refinement"
+            echo "base=C1 SPR + C2 N2b + direct reg1"
+            echo "assigner=stock_TAL_exact"
+            echo "loss=stock"
+            echo "alpha_init=0.10"
+            echo "regression_path=stock_P2_P3_P4"
+            echo "classification_path=refined_P2_stock_P3_P4"
+            echo "max_params=1500000"
+            echo "max_gflops=6.30"
+            echo "epochs=5"
+            echo "test_dev_used=false"
+          } > "$REPORT_DIR/workflow_meta.txt"
+
+          git checkout -- config/experiment.yaml || true
+          rm -f config/local.yaml
+          git status --short
+          git config user.name "yoloedge27-runner"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$REPORT_DIR"
+          if git diff --cached --quiet; then
+            echo "No C6 report changes to commit"
+            exit 0
+          fi
+          git commit -m "Record C6 P2ClsRefine N2b 5e screening"
+          git pull --rebase origin research/yoloedge27-c6-p2-cls-refine-n2b-v1
+          git push origin HEAD:research/yoloedge27-c6-p2-cls-refine-n2b-v1
