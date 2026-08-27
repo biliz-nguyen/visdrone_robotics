@@ -1,0 +1,4 @@
+control_best_pt=/home/minh/yoloedge27_experiments/stage22/c12_tslve_n2b_v1_10e/control_n2b_10e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_10e_seed42/weights/best.pt
+candidate_best_pt=/home/minh/yoloedge27_experiments/stage22/c12_tslve_n2b_v1_10e/candidate_c12_tslve_10e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_10e_seed42/weights/best.pt
+process_isolation=true
+checkpoint_note=runner-local only

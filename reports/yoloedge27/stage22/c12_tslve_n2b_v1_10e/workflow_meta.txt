@@ -1,8 +1,9 @@
 branch=research/yoloedge27-c12-tslve-n2b-v1
-head=164293d1c5f2d393055f712ea6da603ebc0e10cd
+head=298ac2044604d312ae936c78f9b7ada1b0828594
 mechanism=Temporal Scale Learning-Velocity Equalization
 comparison=paired_N2b_10e_vs_C12_10e
 process_isolation=true
+candidate_preflight_before_training=true
 base=C1_SPR+C2_N2b+stock_Detect_direct_reg1
 scale_groups=tiny_lt16,small_16_32,regular_ge32
 calibration=epoch1_stock

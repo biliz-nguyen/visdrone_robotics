@@ -1,0 +1,11 @@
+C12 CANDIDATE SANITY PASSED
+data_yaml=/home/minh/yoloedge27_experiments/stage22/c12_tslve_n2b_v1_10e/candidate_c12_tslve_10e/generated/visdrone_local.yaml
+model_yaml=/home/minh/yoloedge27_experiments/stage22/c12_tslve_n2b_v1_10e/candidate_c12_tslve_10e/generated/model_spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_10e_seed42.yaml
+criterion=TemporalScaleVelocityDetectionLoss
+assigner=TaskAlignedAssigner
+architecture=C1 SPR + C2 N2b + stock Detect direct-reg1
+feature_indices=19,22,25
+strides=4,8,16
+params=1454374
+gflops=6.15552
+test_dev_used=false
