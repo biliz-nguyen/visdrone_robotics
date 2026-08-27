@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 
 import torch
@@ -7,6 +8,20 @@ import torch.nn.functional as F
 
 from ultralytics.utils.loss import v8DetectionLoss
 from ultralytics.utils.tal import make_anchors
+
+
+def _normalize_hyp_for_loss(hyp: Any) -> Any:
+    """Return a loss-local hyperparameter object with attribute access.
+
+    Depending on how pinned Ultralytics is re-imported in the paired C12 runner,
+    ``model.args`` can reach ``v8DetectionLoss`` either as an attribute-style
+    namespace or as a plain dict. Stock loss code expects ``hyp.box/cls/dfl``.
+    Convert only the criterion-local reference when needed; do not mutate
+    ``model.args`` itself.
+    """
+    if isinstance(hyp, dict):
+        return SimpleNamespace(**hyp)
+    return hyp
 
 
 def scale_group_from_min_side(min_side_px: torch.Tensor, tiny_thr: float = 16.0, small_thr: float = 32.0) -> torch.Tensor:
@@ -81,6 +96,11 @@ class TemporalScaleVelocityDetectionLoss(v8DetectionLoss):
         weight_max: float = 1.25,
     ):
         super().__init__(model)
+        # Paired control -> candidate re-imports can leave model.args as a dict.
+        # Normalize only this criterion's reference so stock-style hyp.box/cls/dfl
+        # access remains valid without mutating the detector configuration.
+        self.hyp = _normalize_hyp_for_loss(self.hyp)
+
         if not (0.0 < tiny_thr < small_thr):
             raise ValueError("Require 0 < tiny_thr < small_thr")
         if not (0.0 <= ema_beta < 1.0):
@@ -131,8 +151,8 @@ class TemporalScaleVelocityDetectionLoss(v8DetectionLoss):
         diff = torch.zeros(3)
         w = torch.ones(3)
         valid = count > 0
-        diff[valid] = (self.epoch_difficulty_sum.detach().cpu()[valid] / count[valid])
-        w[valid] = (self.epoch_weight_sum.detach().cpu()[valid] / count[valid])
+        diff[valid] = self.epoch_difficulty_sum.detach().cpu()[valid] / count[valid]
+        w[valid] = self.epoch_weight_sum.detach().cpu()[valid] / count[valid]
         return {
             "epoch_index": int(self.current_epoch),
             "group_names": ["tiny_lt16", "small_16_32", "regular_ge32"],
