@@ -29,6 +29,15 @@ def patch_ultralytics(cfg: dict) -> None:
         stdout=subprocess.DEVNULL,
     )
 
+    c8_aux_mode = cfg.get("c8_aux_mode", "standard")
+    if c8_aux_mode not in {"standard", "tiny_center"}:
+        raise ValueError(f"Unsupported c8_aux_mode={c8_aux_mode!r}")
+    if c8_aux_mode == "tiny_center":
+        if any(bool(cfg.get(k, False)) for k in ("c5_p2_refine", "c6_p2_cls_refine", "c7_p2_reg_refine")):
+            raise ValueError("C8 auxiliary supervision is locked to the frozen stock N2b head")
+        if int(cfg.get("reg_max", 1)) != 1:
+            raise ValueError("C8 auxiliary supervision is locked to direct reg_max=1")
+
     project = Path(cfg["project_root"])
     copies = {
         project / "src" / "custom_blocks.py": module_dir / "visdrone_custom_blocks.py",
@@ -38,11 +47,12 @@ def patch_ultralytics(cfg: dict) -> None:
         project / "src" / "rep_neck.py": module_dir / "visdrone_rep_neck.py",
         project / "src" / "stride_reg_head.py": module_dir / "visdrone_stride_reg_head.py",
         project / "src" / "stride_reg_loss.py": utils_dir / "visdrone_stride_reg_loss.py",
+        project / "src" / "p2_aux_loss.py": utils_dir / "visdrone_p2_aux_loss.py",
     }
     for src, dst in copies.items():
         shutil.copy2(src, dst)
 
-    _patch_tasks(tasks_py)
+    _patch_tasks(tasks_py, cfg)
 
     if cfg["loss_mode"] != "standard":
         raise ValueError("Research branch supports standard loss only")
@@ -75,7 +85,7 @@ def _insert_into_frozenset(text: str, set_name: str, names: list[str]) -> str:
     return text[: brace_start + 1] + insertion + text[brace_start + 1 :]
 
 
-def _patch_tasks(tasks_py: Path) -> None:
+def _patch_tasks(tasks_py: Path, cfg: dict) -> None:
     text = tasks_py.read_text(encoding="utf-8")
 
     imports = [
@@ -128,14 +138,29 @@ def _patch_tasks(tasks_py: Path) -> None:
         "        \"\"\"Initialize the loss criterion for the DetectionModel.\"\"\"\n"
         "        return E2ELoss(self) if getattr(self, \"end2end\", False) else v8DetectionLoss(self)\n"
     )
-    criterion_new = (
-        "    def init_criterion(self):\n"
-        "        \"\"\"Initialize the loss criterion for the DetectionModel.\"\"\"\n"
-        "        if self.model[-1].__class__.__name__ == \"StrideRegDetect\":\n"
-        "            from ultralytics.utils.visdrone_stride_reg_loss import StrideRegDetectionLoss\n"
-        "            return StrideRegDetectionLoss(self)\n"
-        "        return E2ELoss(self) if getattr(self, \"end2end\", False) else v8DetectionLoss(self)\n"
-    )
+
+    if cfg.get("c8_aux_mode", "standard") == "tiny_center":
+        criterion_new = (
+            "    def init_criterion(self):\n"
+            "        \"\"\"Initialize the loss criterion for the DetectionModel.\"\"\"\n"
+            "        if self.model[-1].__class__.__name__ == \"StrideRegDetect\":\n"
+            "            from ultralytics.utils.visdrone_stride_reg_loss import StrideRegDetectionLoss\n"
+            "            return StrideRegDetectionLoss(self)\n"
+            "        if getattr(self, \"end2end\", False):\n"
+            "            return E2ELoss(self)\n"
+            "        from ultralytics.utils.visdrone_p2_aux_loss import P2TinyAuxDetectionLoss\n"
+            "        return P2TinyAuxDetectionLoss(self, tiny_min_side=16.0, aux_weight=0.10, focus_classes=(5, 6))\n"
+        )
+    else:
+        criterion_new = (
+            "    def init_criterion(self):\n"
+            "        \"\"\"Initialize the loss criterion for the DetectionModel.\"\"\"\n"
+            "        if self.model[-1].__class__.__name__ == \"StrideRegDetect\":\n"
+            "            from ultralytics.utils.visdrone_stride_reg_loss import StrideRegDetectionLoss\n"
+            "            return StrideRegDetectionLoss(self)\n"
+            "        return E2ELoss(self) if getattr(self, \"end2end\", False) else v8DetectionLoss(self)\n"
+        )
+
     if criterion_old not in text:
         raise RuntimeError("Cannot find DetectionModel.init_criterion in tasks.py")
     text = text.replace(criterion_old, criterion_new, 1)
