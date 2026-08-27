@@ -1,0 +1,21 @@
+C11 PED-ONLY P2 QUALITY-AUX COSINE-DECAY N2b SANITY PASSED
+data_yaml=/home/minh/yoloedge27_experiments/stage21/c11_ped_qaux_decay_n2b_v1_5e/generated/visdrone_local.yaml
+model_yaml=/home/minh/yoloedge27_experiments/stage21/c11_ped_qaux_decay_n2b_v1_5e/generated/model_spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42.yaml
+criterion=P2QualityAuxDetectionLoss
+assigner=TaskAlignedAssigner
+head=stock Detect reg_max=1
+focus_classes=pedestrian(5)_only
+people_auxiliary=false
+soft_target=0.5+0.5*sqrt(detached_IoU)
+aux_schedule=cosine_to_zero
+aux_base_weight=0.10
+schedule_5e=0.10000000,0.08535534,0.05000000,0.01464466,0.00000000
+final_epoch_aux_weight=0
+aux_gradient=P2 classification only; box-head untouched
+sanity_quality_mean=0.127125
+sanity_target_mean=0.678273
+params=1454374
+gflops=6.15552
+deployment_overhead_params=0
+deployment_overhead_gflops=0
+inference_graph_change=false

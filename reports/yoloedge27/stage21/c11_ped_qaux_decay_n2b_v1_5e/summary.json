@@ -1,0 +1,209 @@
+{
+  "purpose": "C11 pedestrian-only quality-aware P2 supervision with cosine auxiliary decay; 5e screen only.",
+  "mechanism": {
+    "name": "Decayed Pedestrian P2 Quality-Tempered Auxiliary Supervision (D-Ped-P2-QTAS)",
+    "changed_scope": "training loss schedule only; inference graph unchanged",
+    "focus_classes": [
+      "pedestrian"
+    ],
+    "people_auxiliary": false,
+    "tiny_min_side_px": 16.0,
+    "soft_target": "0.5 + 0.5 * sqrt(IoU_detached)",
+    "aux_base_weight": 0.1,
+    "aux_schedule": "cosine_to_zero across epochs",
+    "aux_weights_5e": [
+      0.1,
+      0.08535533905932738,
+      0.05,
+      0.014644660940672627,
+      0.0
+    ],
+    "final_epoch_aux_weight": 0.0,
+    "main_assigner": "stock TAL exact",
+    "main_loss": "stock box/cls/direct-reg1 plus decaying pedestrian-only auxiliary cls term",
+    "inference_graph_change": false,
+    "deployment_overhead": "0 params / 0 GFLOPs / 0 nodes"
+  },
+  "protocol": {
+    "epochs": 5,
+    "batch": 8,
+    "nbs": 16,
+    "workers": 4,
+    "imgsz": 640,
+    "seed": 42,
+    "pretrained": false,
+    "architecture": "frozen C1 SPR + C2 N2b + stock direct-reg1 Detect",
+    "test_dev_used": false
+  },
+  "control": {
+    "id": "N2b-5e-stock-loss",
+    "best_eval": {
+      "precision": 0.32377698450992576,
+      "recall": 0.19778084383604064,
+      "map50": 0.14413927475479643,
+      "map50_95": 0.0717339895878833
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.13589282226094615,
+        "recall": 0.34882406151062867,
+        "map50": 0.1476392765499091,
+        "map50_95": 0.05142323744247081
+      },
+      "people": {
+        "precision": 0.4033307189496828,
+        "recall": 0.13014634146341464,
+        "map50": 0.1216662127680507,
+        "map50_95": 0.03604498280785341
+      }
+    },
+    "focus_map50_95_mean": 0.04373411012516211,
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    }
+  },
+  "c10_reference": {
+    "status": "complete",
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    },
+    "epoch5": {
+      "precision": 0.31053,
+      "recall": 0.20411,
+      "map50": 0.13587,
+      "map50_95": 0.06683
+    },
+    "best_eval": {
+      "precision": 0.3109038763205999,
+      "recall": 0.20409401719007084,
+      "map50": 0.13613225830243714,
+      "map50_95": 0.0671815869295517
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.09755596989954614,
+        "recall": 0.4337403889642696,
+        "map50": 0.16773914088959488,
+        "map50_95": 0.05458110950453041
+      },
+      "people": {
+        "precision": 0.3593273162541102,
+        "recall": 0.1373658536585366,
+        "map50": 0.11342104545198492,
+        "map50_95": 0.034210756210971395
+      }
+    },
+    "focus_map50_95_mean": 0.044395932857750904,
+    "speed_ms_best_eval": {
+      "preprocess": 0.14590434487543158,
+      "inference": 1.3232989762646021,
+      "loss": 0.00047841058071786845,
+      "postprocess": 2.662518175175203
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage20/c10_ped_qaux_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.pt"
+  },
+  "candidate": {
+    "status": "complete",
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    },
+    "epoch5": {
+      "precision": 0.31573,
+      "recall": 0.19726,
+      "map50": 0.13644,
+      "map50_95": 0.06699
+    },
+    "best_eval": {
+      "precision": 0.3159743719430741,
+      "recall": 0.19922040429015814,
+      "map50": 0.1372650884643914,
+      "map50_95": 0.06725306624379603
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.13652149591357526,
+        "recall": 0.37008141112618725,
+        "map50": 0.15952532214354992,
+        "map50_95": 0.054022791156169245
+      },
+      "people": {
+        "precision": 0.3865728483074246,
+        "recall": 0.13502439024390245,
+        "map50": 0.11997809213866732,
+        "map50_95": 0.036665730093692825
+      }
+    },
+    "focus_map50_95_mean": 0.045344260624931035,
+    "speed_ms_best_eval": {
+      "preprocess": 0.15533726825004415,
+      "inference": 1.2777482919554244,
+      "loss": 0.0004956587593761158,
+      "postprocess": 2.615068885049773
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage21/c11_ped_qaux_decay_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.pt"
+  },
+  "comparison": {
+    "delta_candidate_minus_n2b": {
+      "precision": -0.007802612566851663,
+      "recall": 0.0014395604541175,
+      "map50": -0.006874186290405038,
+      "map50_95": -0.00448092334408727
+    },
+    "delta_focus_candidate_minus_n2b": {
+      "pedestrian": {
+        "precision": 0.0006286736526291137,
+        "recall": 0.021257349615558585,
+        "map50": 0.011886045593640815,
+        "map50_95": 0.002599553713698438
+      },
+      "people": {
+        "precision": -0.0167578706422582,
+        "recall": 0.004878048780487809,
+        "map50": -0.00168812062938338,
+        "map50_95": 0.0006207472858394125
+      }
+    },
+    "delta_focus_map50_95_mean": 0.0016101504997689253,
+    "same_params": true,
+    "same_gflops": true
+  },
+  "comparison_vs_c10": {
+    "delta_candidate_minus_c10": {
+      "precision": 0.0050704956224741915,
+      "recall": -0.004873612899912699,
+      "map50": 0.001132830161954257,
+      "map50_95": 7.14793142443243e-05
+    },
+    "delta_focus_candidate_minus_c10": {
+      "pedestrian": {
+        "precision": 0.038965526014029125,
+        "recall": -0.06365897783808233,
+        "map50": -0.00821381874604496,
+        "map50_95": -0.0005583183483611684
+      },
+      "people": {
+        "precision": 0.027245532053314425,
+        "recall": -0.0023414634146341484,
+        "map50": 0.006557046686682402,
+        "map50_95": 0.00245497388272143
+      }
+    },
+    "delta_focus_map50_95_mean": 0.0009483277671801307
+  },
+  "promotion": {
+    "promote_to_50e": false,
+    "rule": "overall mAP50-95 >= N2b; mAP50 loss <=0.1pp; focus mean >= N2b; each focus class no worse by >0.1pp; identical deploy complexity; ONNX pass"
+  },
+  "caution": "single local seed, deterministic=false, 5 epochs only; C11 changes only C10 auxiliary weight schedule from constant 0.10 to cosine-to-zero."
+}
