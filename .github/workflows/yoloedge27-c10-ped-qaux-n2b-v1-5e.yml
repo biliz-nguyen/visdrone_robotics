@@ -16,7 +16,7 @@ on:
 
 concurrency:
   group: yoloedge27-c10-ped-qaux-n2b-v1-5e
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: write
