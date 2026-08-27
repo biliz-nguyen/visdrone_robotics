@@ -32,6 +32,47 @@ def unique_run_name(cfg: dict) -> str:
     return name
 
 
+def _install_c11_aux_schedule(model, cfg: dict) -> None:
+    mode = cfg.get("c11_aux_schedule", "constant")
+    if mode == "constant":
+        return
+    if mode != "cosine_to_zero":
+        raise ValueError(f"Unsupported c11_aux_schedule={mode!r}")
+
+    from src.aux_schedule import cosine_to_zero_weight
+
+    base_weight = float(cfg.get("c11_aux_base_weight", 0.10))
+    expected_focus = tuple(int(x) for x in cfg.get("c9_focus_classes", [5]))
+
+    def on_train_epoch_start(trainer):
+        criterion = getattr(trainer.model, "criterion", None)
+        if criterion is None:
+            criterion = trainer.model.init_criterion()
+            trainer.model.criterion = criterion
+
+        if criterion.__class__.__name__ != "P2QualityAuxDetectionLoss":
+            raise RuntimeError(
+                "C11 cosine schedule requires P2QualityAuxDetectionLoss, got "
+                f"{criterion.__class__.__name__}"
+            )
+        if tuple(criterion.focus_classes) != expected_focus:
+            raise RuntimeError(
+                f"C11 focus mismatch: criterion={criterion.focus_classes}, expected={expected_focus}"
+            )
+
+        weight = cosine_to_zero_weight(base_weight, int(trainer.epoch), int(trainer.epochs))
+        criterion.aux_weight = float(weight)
+        criterion.c11_epoch = int(trainer.epoch)
+        criterion.c11_epochs = int(trainer.epochs)
+        criterion.c11_base_weight = base_weight
+        print(
+            f"C11_AUX_WEIGHT epoch={int(trainer.epoch) + 1}/{int(trainer.epochs)} "
+            f"weight={weight:.8f}"
+        )
+
+    model.add_callback("on_train_epoch_start", on_train_epoch_start)
+
+
 def main():
     cfg, data_yaml, model_yaml = prepare_runtime()
 
@@ -76,6 +117,7 @@ def main():
         t["nbs"],
     )
     print("Device:", device)
+    print("C11 aux schedule:", cfg.get("c11_aux_schedule", "constant"))
     print("=" * 90)
 
     model = YOLO(
@@ -84,6 +126,7 @@ def main():
 
     # IMPORTANT:
     # no model.load("yolo11n.pt")
+    _install_c11_aux_schedule(model, cfg)
 
     model.train(
         data=str(data_yaml),
@@ -189,6 +232,8 @@ def main():
             cfg["attention"],
         "loss_mode":
             cfg["loss_mode"],
+        "c11_aux_schedule":
+            cfg.get("c11_aux_schedule", "constant"),
     }
 
     state = save_state(
