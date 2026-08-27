@@ -30,6 +30,10 @@ def _detect_line(cfg: dict, indices: list[int]) -> str:
         if cfg.get("head_mode", "standard") != "standard":
             raise ValueError("C6 P2 classification refinement requires the standard Detect head")
         return f"  - [{indices}, 1, P2ClsDetect, [nc]]"
+    if cfg.get("c7_p2_reg_refine", False):
+        if cfg.get("head_mode", "standard") != "standard":
+            raise ValueError("C7 P2 regression refinement requires the standard Detect head")
+        return f"  - [{indices}, 1, P2RegDetect, [nc]]"
     if cfg.get("head_mode", "standard") == "stride_reg":
         bins = normalize_head_bins(cfg)
         return f"  - [{indices}, 1, StrideRegDetect, [nc, {bins}]]"
@@ -73,12 +77,14 @@ def build_model_yaml(cfg: dict) -> Path:
     attention_cfg = cfg["attention_cfg"]
     p2_refine = bool(cfg.get("c5_p2_refine", False))
     p2_cls_refine = bool(cfg.get("c6_p2_cls_refine", False))
+    p2_reg_refine = bool(cfg.get("c7_p2_reg_refine", False))
 
-    if p2_refine and p2_cls_refine:
-        raise ValueError("C5 full-P2 and C6 classification-only refinement cannot be enabled together")
-    if (p2_refine or p2_cls_refine) and attn != "none":
+    enabled_p2_modes = sum(int(x) for x in (p2_refine, p2_cls_refine, p2_reg_refine))
+    if enabled_p2_modes > 1:
+        raise ValueError("C5/C6/C7 P2 refinement modes are mutually exclusive")
+    if enabled_p2_modes and attn != "none":
         raise ValueError("P2 refinement screens are locked to attention=none")
-    if (p2_refine or p2_cls_refine) and cfg.get("head_mode", "standard") != "standard":
+    if enabled_p2_modes and cfg.get("head_mode", "standard") != "standard":
         raise ValueError("P2 refinement screens require the standard direct-reg1 head")
 
     if attn == "none":
@@ -106,8 +112,8 @@ def build_model_yaml(cfg: dict) -> Path:
             detect_line = _detect_line(cfg, [26, 22, 25])
         else:
             p2_refine_line = None
-            # C6 keeps the exact N2b feature indices. P2ClsDetect performs the
-            # refinement internally only before cv3[0]; cv2 sees stock layer19.
+            # C6/C7 keep the exact N2b feature indices. Their custom Detect
+            # modules isolate refinement internally to cls or reg respectively.
             detect_line = _detect_line(cfg, [19, 22, 25])
 
         tail = f"\n{p2_refine_line}\n\n{detect_line}" if p2_refine_line else f"\n{detect_line}"
