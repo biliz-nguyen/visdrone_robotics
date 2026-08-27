@@ -1,0 +1,22 @@
+name: One-shot shutdown after C12 50e run 33097117452
+
+on:
+  workflow_run:
+    workflows:
+      - "YOLOEdge27 C12 TSLVE N2b Paired 50e Validation"
+    types:
+      - completed
+
+jobs:
+  shutdown-runner:
+    if: ${{ github.event.workflow_run.id == 33097117452 }}
+    runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
+    timeout-minutes: 5
+    steps:
+      - name: Schedule host shutdown
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "C12 50e run 33097117452 completed with conclusion=${{ github.event.workflow_run.conclusion }}"
+          echo "Scheduling host shutdown in 1 minute so this Actions job can finish cleanly."
+          sudo shutdown -h +1
