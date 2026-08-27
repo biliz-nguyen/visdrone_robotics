@@ -1,5 +1,5 @@
 branch=research/yoloedge27-c3-taq-sp-n2b-v2
-head=f2a18b70b07708d4f127615fcf0a1fed0f77ac62
+head=de7638b584462f79c3ebfea2b9b03daed5111892
 mechanism=TAQ-SP stock selection + post-selection tiny quality reweight
 base=C1 SPR + C2 N2b + direct reg1
 positive_selection=stock_TAL_exact

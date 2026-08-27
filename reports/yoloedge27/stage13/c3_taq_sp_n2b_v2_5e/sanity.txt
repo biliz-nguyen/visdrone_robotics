@@ -1,0 +1,14 @@
+C3b TAQ-SP N2b SANITY PASSED
+data_yaml=/home/minh/yoloedge27_experiments/stage13/c3_taq_sp_n2b_v2_5e/generated/visdrone_local.yaml
+model_yaml=/home/minh/yoloedge27_experiments/stage13/c3_taq_sp_n2b_v2_5e/generated/model_spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42.yaml
+assigner=SelectionPreservingTinyQualityAssigner
+selection=stock_TAL_exact
+quality_reweight=post_selection_only
+tiny_min_side=16.0
+beta_floor=5.0
+SPR=P4->P5
+neck_nominal=160/256/416
+head=Detect reg_max=1
+params=1454374
+gflops=6.15552
+inference_graph_change=false

@@ -1,0 +1,149 @@
+{
+  "purpose": "C3b TAQ-SP on frozen N2b; 5e screening only, not final paper evidence.",
+  "mechanism": {
+    "name": "Selection-Preserving Tiny-Adaptive Quality Reweighting (TAQ-SP)",
+    "changed_scope": "post-selection TAL target-quality normalization only",
+    "positive_selection": "stock TAL exact",
+    "tiny_min_side": 16.0,
+    "beta_floor": 5.0,
+    "retuned_for_n2b": true,
+    "inference_overhead": "none"
+  },
+  "protocol": {
+    "epochs": 5,
+    "batch": 8,
+    "nbs": 16,
+    "workers": 4,
+    "imgsz": 640,
+    "seed": 42,
+    "pretrained": false,
+    "architecture": "frozen C1 SPR + C2 N2b + direct reg1",
+    "test_dev_used": false
+  },
+  "control": {
+    "id": "N2b-5e-stock-TAL",
+    "best_eval": {
+      "precision": 0.32377698450992576,
+      "recall": 0.19778084383604064,
+      "map50": 0.14413927475479643,
+      "map50_95": 0.0717339895878833
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.13589282226094615,
+        "recall": 0.34882406151062867,
+        "map50": 0.1476392765499091,
+        "map50_95": 0.05142323744247081
+      },
+      "people": {
+        "precision": 0.4033307189496828,
+        "recall": 0.13014634146341464,
+        "map50": 0.1216662127680507,
+        "map50_95": 0.03604498280785341
+      }
+    },
+    "focus_map50_95_mean": 0.04373411012516211,
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    }
+  },
+  "prior_taq_v1": {
+    "best_eval": {
+      "precision": 0.3179456539530435,
+      "recall": 0.19652439620493417,
+      "map50": 0.13843170501690502,
+      "map50_95": 0.06968490061594944
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.14217948690505738,
+        "recall": 0.32914970601537763,
+        "map50": 0.13232138134259164,
+        "map50_95": 0.04481595295215739
+      },
+      "people": {
+        "precision": 0.3795032018052842,
+        "recall": 0.12781196564826028,
+        "map50": 0.11811385491042768,
+        "map50_95": 0.03356656043841537
+      }
+    },
+    "promoted": false
+  },
+  "candidate": {
+    "status": "complete",
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    },
+    "epoch5": {
+      "precision": 0.32601,
+      "recall": 0.18681,
+      "map50": 0.13954,
+      "map50_95": 0.06909
+    },
+    "best_eval": {
+      "precision": 0.32479423624979187,
+      "recall": 0.18773090876058338,
+      "map50": 0.14022641416095943,
+      "map50_95": 0.0693939601553924
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.17255181779652498,
+        "recall": 0.29093170511080957,
+        "map50": 0.13485735477130795,
+        "map50_95": 0.04635712172476392
+      },
+      "people": {
+        "precision": 0.3497554402981694,
+        "recall": 0.1360187909475185,
+        "map50": 0.11330640303753131,
+        "map50_95": 0.033783996100366157
+      }
+    },
+    "focus_map50_95_mean": 0.04007055891256504,
+    "speed_ms_best_eval": {
+      "preprocess": 0.14115636678190083,
+      "inference": 1.2708419032803389,
+      "loss": 0.00044472810249363736,
+      "postprocess": 2.9000620802916455
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage13/c3_taq_sp_n2b_v2_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.pt"
+  },
+  "comparison": {
+    "delta_candidate_minus_n2b": {
+      "precision": 0.0010172517398661096,
+      "recall": -0.010049935075457261,
+      "map50": -0.003912860593836998,
+      "map50_95": -0.0023400294324908977
+    },
+    "delta_focus_candidate_minus_n2b": {
+      "pedestrian": {
+        "precision": 0.03665899553557883,
+        "recall": -0.0578923563998191,
+        "map50": -0.012781921778601157,
+        "map50_95": -0.00506611571770689
+      },
+      "people": {
+        "precision": -0.0535752786515134,
+        "recall": 0.00587244948410387,
+        "map50": -0.00835980973051939,
+        "map50_95": -0.002260986707487256
+      }
+    },
+    "delta_focus_map50_95_mean": -0.003663551212597073,
+    "same_params": true,
+    "same_gflops": true
+  },
+  "promotion": {
+    "promote_to_50e": false,
+    "rule": "overall mAP50-95 >= N2b; mAP50 loss <=0.1pp; focus mean mAP50-95 >= N2b; each pedestrian/people mAP50-95 no worse by >0.1pp; identical inference complexity; ONNX pass"
+  },
+  "caution": "single local seed, deterministic=false, 5 epochs only; promote only if the locked rule passes."
+}
