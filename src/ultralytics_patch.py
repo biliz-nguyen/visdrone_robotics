@@ -32,6 +32,7 @@ def patch_ultralytics(cfg: dict) -> None:
     project = Path(cfg["project_root"])
     copies = {
         project / "src" / "custom_blocks.py": module_dir / "visdrone_custom_blocks.py",
+        project / "src" / "p2_refine.py": module_dir / "visdrone_p2_refine.py",
         project / "src" / "rep_neck.py": module_dir / "visdrone_rep_neck.py",
         project / "src" / "stride_reg_head.py": module_dir / "visdrone_stride_reg_head.py",
         project / "src" / "stride_reg_loss.py": utils_dir / "visdrone_stride_reg_loss.py",
@@ -84,6 +85,7 @@ def _patch_tasks(tasks_py: Path) -> None:
 
     imports = [
         "from ultralytics.nn.modules.visdrone_custom_blocks import SPRDown, AConv, ECA, CoordAtt, ResidualLiteCA",
+        "from ultralytics.nn.modules.visdrone_p2_refine import P2Refine",
         "from ultralytics.nn.modules.visdrone_rep_neck import RepC3k2",
         "from ultralytics.nn.modules.visdrone_stride_reg_head import StrideRegDetect",
     ]
@@ -97,7 +99,7 @@ def _patch_tasks(tasks_py: Path) -> None:
     text = _insert_into_frozenset(
         text,
         "base_modules",
-        ["SPRDown", "AConv", "ECA", "CoordAtt", "ResidualLiteCA", "RepC3k2"],
+        ["SPRDown", "AConv", "ECA", "CoordAtt", "ResidualLiteCA", "P2Refine", "RepC3k2"],
     )
 
     # RepC3k2 mirrors the stock C3k2 constructor. Register it as a repeat
