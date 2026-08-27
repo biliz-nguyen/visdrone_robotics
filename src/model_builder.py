@@ -26,6 +26,10 @@ def _downsample_line(cfg: dict, stage: str) -> str:
 
 
 def _detect_line(cfg: dict, indices: list[int]) -> str:
+    if cfg.get("c6_p2_cls_refine", False):
+        if cfg.get("head_mode", "standard") != "standard":
+            raise ValueError("C6 P2 classification refinement requires the standard Detect head")
+        return f"  - [{indices}, 1, P2ClsDetect, [nc]]"
     if cfg.get("head_mode", "standard") == "stride_reg":
         bins = normalize_head_bins(cfg)
         return f"  - [{indices}, 1, StrideRegDetect, [nc, {bins}]]"
@@ -68,11 +72,14 @@ def build_model_yaml(cfg: dict) -> Path:
     attn = cfg["attention"]
     attention_cfg = cfg["attention_cfg"]
     p2_refine = bool(cfg.get("c5_p2_refine", False))
+    p2_cls_refine = bool(cfg.get("c6_p2_cls_refine", False))
 
-    if p2_refine and attn != "none":
-        raise ValueError("C5 P2 refinement screen is locked to attention=none")
-    if p2_refine and cfg.get("head_mode", "standard") != "standard":
-        raise ValueError("C5 P2 refinement screen requires the standard Detect head")
+    if p2_refine and p2_cls_refine:
+        raise ValueError("C5 full-P2 and C6 classification-only refinement cannot be enabled together")
+    if (p2_refine or p2_cls_refine) and attn != "none":
+        raise ValueError("P2 refinement screens are locked to attention=none")
+    if (p2_refine or p2_cls_refine) and cfg.get("head_mode", "standard") != "standard":
+        raise ValueError("P2 refinement screens require the standard direct-reg1 head")
 
     if attn == "none":
         attention_line = None
@@ -94,13 +101,13 @@ def build_model_yaml(cfg: dict) -> Path:
 
     if attn == "none":
         if p2_refine:
-            # Keep the frozen N2b PAN path intact. Layer 19 is the P2 neck
-            # output, while 22/25 are the unchanged P3/P4 outputs. The new
-            # layer 26 exists only on the Detect input path.
+            # C5 control: refinement sits before both box and cls branches.
             p2_refine_line = f"  - [19, 1, P2Refine, [{p2_c}, 0.10]]"
             detect_line = _detect_line(cfg, [26, 22, 25])
         else:
             p2_refine_line = None
+            # C6 keeps the exact N2b feature indices. P2ClsDetect performs the
+            # refinement internally only before cv3[0]; cv2 sees stock layer19.
             detect_line = _detect_line(cfg, [19, 22, 25])
 
         tail = f"\n{p2_refine_line}\n\n{detect_line}" if p2_refine_line else f"\n{detect_line}"
