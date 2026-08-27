@@ -11,6 +11,7 @@ on:
       - 'scripts/train.py'
       - 'scripts/run_c12_tslve_n2b_10e.py'
       - 'scripts/run_c12_phase_isolated.py'
+      - 'scripts/preflight_c12_candidate.py'
       - 'scripts/compare_c12_isolated.py'
       - 'tests/test_scale_velocity_loss.py'
       - 'src/model_builder.py'
@@ -60,6 +61,7 @@ jobs:
           grep -q 'weight_min=0.75' src/ultralytics_patch.py
           grep -q 'weight_max=1.25' src/ultralytics_patch.py
           grep -q 'fresh_process=true' scripts/run_c12_phase_isolated.py
+          grep -q 'C12_CANDIDATE_PREFLIGHT_PASSED' scripts/preflight_c12_candidate.py
           grep -q 'process_isolation' scripts/compare_c12_isolated.py
           grep -q 'c12_scale_dynamics.jsonl' scripts/train.py
           test -f reports/yoloedge27/stage7/neck_realloc_v2_5e/neck_realloc_v2_5e_eval.json
@@ -69,6 +71,7 @@ jobs:
             scripts/train.py \
             scripts/run_c12_tslve_n2b_10e.py \
             scripts/run_c12_phase_isolated.py \
+            scripts/preflight_c12_candidate.py \
             scripts/compare_c12_isolated.py \
             tests/test_scale_velocity_loss.py
 
@@ -126,12 +129,24 @@ jobs:
             tests/test_neck_realloc.py \
             tests/test_scale_velocity_loss.py
 
+      - name: Gate training with full C12 candidate sanity
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/preflight_c12_candidate.py \
+            --dataset "$DATASET" \
+            --screen-root "$SCREEN_ROOT" \
+            --report-dir "$REPORT_DIR" \
+            --epochs 10 \
+            --batch 8 \
+            --nbs 16 \
+            --workers 4
+
       - name: Train isolated N2b control 10e
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf "$SCREEN_ROOT" "$REPORT_DIR"
-          mkdir -p "$SCREEN_ROOT" "$REPORT_DIR"
+          rm -rf "$SCREEN_ROOT/control_n2b_10e" "$SCREEN_ROOT/candidate_c12_tslve_10e"
           "$PYTHON_BIN" scripts/run_c12_phase_isolated.py \
             --phase control_n2b_10e \
             --dataset "$DATASET" \
@@ -175,6 +190,7 @@ jobs:
             echo "mechanism=Temporal Scale Learning-Velocity Equalization"
             echo "comparison=paired_N2b_10e_vs_C12_10e"
             echo "process_isolation=true"
+            echo "candidate_preflight_before_training=true"
             echo "base=C1_SPR+C2_N2b+stock_Detect_direct_reg1"
             echo "scale_groups=tiny_lt16,small_16_32,regular_ge32"
             echo "calibration=epoch1_stock"
