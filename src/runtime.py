@@ -41,7 +41,17 @@ def prepare_runtime(
     torch.cuda.manual_seed_all(cfg["seed"])
 
     c3_assigner_mode = cfg.get("c3_assigner_mode", "standard")
-    if c3_assigner_mode == "tiny_quality":
+    c4_loss_mode = cfg.get("c4_loss_mode", "standard")
+
+    if c4_loss_mode == "tiny_nwd":
+        if c3_assigner_mode != "standard":
+            raise ValueError("C4 tiny-NWD screen requires stock TAL (c3_assigner_mode=standard)")
+        from .ultralytics_patch_tiny_nwd import patch_ultralytics_tiny_nwd
+
+        patch_ultralytics_tiny_nwd(cfg)
+    elif c4_loss_mode != "standard":
+        raise ValueError(f"Unsupported c4_loss_mode={c4_loss_mode!r}")
+    elif c3_assigner_mode == "tiny_quality":
         from .ultralytics_patch_taq import patch_ultralytics_taq
 
         patch_ultralytics_taq(cfg)
