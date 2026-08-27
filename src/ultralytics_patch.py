@@ -33,6 +33,7 @@ def patch_ultralytics(cfg: dict) -> None:
     copies = {
         project / "src" / "custom_blocks.py": module_dir / "visdrone_custom_blocks.py",
         project / "src" / "p2_refine.py": module_dir / "visdrone_p2_refine.py",
+        project / "src" / "p2_cls_head.py": module_dir / "visdrone_p2_cls_head.py",
         project / "src" / "rep_neck.py": module_dir / "visdrone_rep_neck.py",
         project / "src" / "stride_reg_head.py": module_dir / "visdrone_stride_reg_head.py",
         project / "src" / "stride_reg_loss.py": utils_dir / "visdrone_stride_reg_loss.py",
@@ -50,14 +51,7 @@ def patch_ultralytics(cfg: dict) -> None:
 
 
 def _insert_into_frozenset(text: str, set_name: str, names: list[str]) -> str:
-    """Insert symbols into a named frozenset assignment in Ultralytics tasks.py.
-
-    The pinned Ultralytics revision formats repeat_modules as
-    ``frozenset(  # comment`` followed by the opening ``{`` on the next line.
-    A regex that assumes ``frozenset(\s*{`` is therefore brittle.  Locate the
-    assignment and its set braces structurally instead, while still keeping the
-    patch deliberately narrow to the requested named set.
-    """
+    """Insert symbols into a named frozenset assignment in Ultralytics tasks.py."""
     assignment = re.search(rf"\b{re.escape(set_name)}\s*=\s*frozenset\s*\(", text)
     if assignment is None:
         raise RuntimeError(f"Cannot find {set_name} frozenset assignment in tasks.py")
@@ -86,6 +80,7 @@ def _patch_tasks(tasks_py: Path) -> None:
     imports = [
         "from ultralytics.nn.modules.visdrone_custom_blocks import SPRDown, AConv, ECA, CoordAtt, ResidualLiteCA",
         "from ultralytics.nn.modules.visdrone_p2_refine import P2Refine",
+        "from ultralytics.nn.modules.visdrone_p2_cls_head import P2ClsDetect",
         "from ultralytics.nn.modules.visdrone_rep_neck import RepC3k2",
         "from ultralytics.nn.modules.visdrone_stride_reg_head import StrideRegDetect",
     ]
@@ -101,11 +96,6 @@ def _patch_tasks(tasks_py: Path) -> None:
         "base_modules",
         ["SPRDown", "AConv", "ECA", "CoordAtt", "ResidualLiteCA", "P2Refine", "RepC3k2"],
     )
-
-    # RepC3k2 mirrors the stock C3k2 constructor. Register it as a repeat
-    # module so parse_model applies the same depth multiplier and inserts the
-    # scaled internal repeat count at args[2]. This is essential for a fair
-    # N1 comparison; otherwise an explicit n bypasses scale=n depth scaling.
     text = _insert_into_frozenset(text, "repeat_modules", ["RepC3k2"])
 
     parse_anchor = (
@@ -118,6 +108,9 @@ def _patch_tasks(tasks_py: Path) -> None:
     parse_replacement = (
         "        elif m is Concat:\n"
         "            c2 = sum(ch[x] for x in f)\n"
+        "        elif m is P2ClsDetect:\n"
+        "            args.extend([end2end, [ch[x] for x in f]])\n"
+        "            m.legacy = legacy\n"
         "        elif m is StrideRegDetect:\n"
         "            args.extend([end2end, [ch[x] for x in f]])\n"
         "            m.legacy = legacy\n"
