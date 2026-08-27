@@ -36,14 +36,21 @@ def patch_ultralytics(cfg: dict) -> None:
     if c9_aux_mode not in {"standard", "quality_center"}:
         raise ValueError(f"Unsupported c9_aux_mode={c9_aux_mode!r}")
     if c8_aux_mode != "standard" and c9_aux_mode != "standard":
-        raise ValueError("C8 and C9 auxiliary modes are mutually exclusive")
+        raise ValueError("C8 and C9/C10 auxiliary modes are mutually exclusive")
+
+    quality_focus_classes = tuple(int(x) for x in cfg.get("c9_focus_classes", (5, 6)))
+    if c9_aux_mode == "quality_center":
+        if not quality_focus_classes:
+            raise ValueError("c9_focus_classes cannot be empty when quality auxiliary supervision is active")
+        if any(x < 0 or x >= 10 for x in quality_focus_classes):
+            raise ValueError(f"Invalid c9_focus_classes={quality_focus_classes!r}")
 
     aux_active = c8_aux_mode != "standard" or c9_aux_mode != "standard"
     if aux_active:
         if any(bool(cfg.get(k, False)) for k in ("c5_p2_refine", "c6_p2_cls_refine", "c7_p2_reg_refine")):
-            raise ValueError("C8/C9 auxiliary supervision is locked to the frozen stock N2b head")
+            raise ValueError("C8/C9/C10 auxiliary supervision is locked to the frozen stock N2b head")
         if int(cfg.get("reg_max", 1)) != 1:
-            raise ValueError("C8/C9 auxiliary supervision is locked to direct reg_max=1")
+            raise ValueError("C8/C9/C10 auxiliary supervision is locked to direct reg_max=1")
 
     project = Path(cfg["project_root"])
     copies = {
@@ -148,6 +155,7 @@ def _patch_tasks(tasks_py: Path, cfg: dict) -> None:
     )
 
     if cfg.get("c9_aux_mode", "standard") == "quality_center":
+        focus_classes_literal = repr(tuple(int(x) for x in cfg.get("c9_focus_classes", (5, 6))))
         criterion_new = (
             "    def init_criterion(self):\n"
             "        \"\"\"Initialize the loss criterion for the DetectionModel.\"\"\"\n"
@@ -157,7 +165,7 @@ def _patch_tasks(tasks_py: Path, cfg: dict) -> None:
             "        if getattr(self, \"end2end\", False):\n"
             "            return E2ELoss(self)\n"
             "        from ultralytics.utils.visdrone_p2_quality_aux_loss import P2QualityAuxDetectionLoss\n"
-            "        return P2QualityAuxDetectionLoss(self, tiny_min_side=16.0, aux_weight=0.10, focus_classes=(5, 6), target_floor=0.50, quality_gamma=0.50)\n"
+            f"        return P2QualityAuxDetectionLoss(self, tiny_min_side=16.0, aux_weight=0.10, focus_classes={focus_classes_literal}, target_floor=0.50, quality_gamma=0.50)\n"
         )
     elif cfg.get("c8_aux_mode", "standard") == "tiny_center":
         criterion_new = (
