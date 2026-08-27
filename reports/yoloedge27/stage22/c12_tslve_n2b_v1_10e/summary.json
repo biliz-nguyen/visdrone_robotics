@@ -147,10 +147,10 @@
     },
     "focus_map50_95_mean": 0.05639548312602866,
     "speed_ms_best_eval": {
-      "preprocess": 0.1682006113066172,
-      "inference": 1.3297675675353506,
-      "loss": 0.0005242864925917374,
-      "postprocess": 2.3373832390375457
+      "preprocess": 0.15354727372015362,
+      "inference": 1.3421165182697978,
+      "loss": 0.00048753283249259325,
+      "postprocess": 2.1651021113036495
     },
     "local_best_pt": "/home/minh/yoloedge27_experiments/stage22/c12_tslve_n2b_v1_10e/control_n2b_10e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_10e_seed42/weights/best.pt"
   },
@@ -181,5 +181,5 @@
     "note": "context only; NOT used for C12 promotion because epochs differ"
   },
   "status": "failed",
-  "error": "AssertionError: v8DetectionLoss"
+  "error": "AttributeError: 'dict' object has no attribute 'box'"
 }

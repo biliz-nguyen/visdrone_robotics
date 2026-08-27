@@ -1,5 +1,5 @@
 branch=research/yoloedge27-c12-tslve-n2b-v1
-head=6b36d1f1b6d7e86f481ab993aeec16f08c419865
+head=1e198c7db062a4a338bf6994cba347203bba738b
 mechanism=Temporal Scale Learning-Velocity Equalization
 comparison=paired_N2b_10e_vs_C12_10e
 base=C1_SPR+C2_N2b+stock_Detect_direct_reg1
