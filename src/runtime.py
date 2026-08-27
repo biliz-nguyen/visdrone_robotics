@@ -45,6 +45,10 @@ def prepare_runtime(
         from .ultralytics_patch_taq import patch_ultralytics_taq
 
         patch_ultralytics_taq(cfg)
+    elif c3_assigner_mode == "tiny_quality_sp":
+        from .ultralytics_patch_taq_sp import patch_ultralytics_taq_sp
+
+        patch_ultralytics_taq_sp(cfg)
     elif c3_assigner_mode == "standard":
         patch_ultralytics(cfg)
     else:
