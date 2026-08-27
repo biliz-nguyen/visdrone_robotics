@@ -67,6 +67,12 @@ def build_model_yaml(cfg: dict) -> Path:
 
     attn = cfg["attention"]
     attention_cfg = cfg["attention_cfg"]
+    p2_refine = bool(cfg.get("c5_p2_refine", False))
+
+    if p2_refine and attn != "none":
+        raise ValueError("C5 P2 refinement screen is locked to attention=none")
+    if p2_refine and cfg.get("head_mode", "standard") != "standard":
+        raise ValueError("C5 P2 refinement screen requires the standard Detect head")
 
     if attn == "none":
         attention_line = None
@@ -87,7 +93,17 @@ def build_model_yaml(cfg: dict) -> Path:
         raise ValueError(attn)
 
     if attn == "none":
-        detect_line = _detect_line(cfg, [19, 22, 25])
+        if p2_refine:
+            # Keep the frozen N2b PAN path intact. Layer 19 is the P2 neck
+            # output, while 22/25 are the unchanged P3/P4 outputs. The new
+            # layer 26 exists only on the Detect input path.
+            p2_refine_line = f"  - [19, 1, P2Refine, [{p2_c}, 0.10]]"
+            detect_line = _detect_line(cfg, [26, 22, 25])
+        else:
+            p2_refine_line = None
+            detect_line = _detect_line(cfg, [19, 22, 25])
+
+        tail = f"\n{p2_refine_line}\n\n{detect_line}" if p2_refine_line else f"\n{detect_line}"
         head = f"""
 head:
   - [-1, 1, nn.Upsample, [null, 2, nearest]]
@@ -109,8 +125,7 @@ head:
 {pan_down_p3_p4}
   - [[-1, 13], 1, Concat, [1]]
 {neck_p4_bottom}
-
-{detect_line}
+{tail}
 """
     else:
         detect_line = _detect_line(cfg, [20, 23, 26])
