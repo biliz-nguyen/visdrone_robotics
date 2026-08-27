@@ -42,117 +42,7 @@
     "test_dev_used": false
   },
   "control_10e": {
-    "status": "complete",
-    "complexity": {
-      "params": 1454374,
-      "gflops": 6.15552
-    },
-    "epoch10": {
-      "precision": 0.29207,
-      "recall": 0.22072,
-      "map50": 0.17964,
-      "map50_95": 0.09131
-    },
-    "metric_trajectory": [
-      {
-        "epoch": 1,
-        "precision": 0.03958,
-        "recall": 0.14671,
-        "map50": 0.03259,
-        "map50_95": 0.01115
-      },
-      {
-        "epoch": 2,
-        "precision": 0.2548,
-        "recall": 0.10952,
-        "map50": 0.06496,
-        "map50_95": 0.02844
-      },
-      {
-        "epoch": 3,
-        "precision": 0.28311,
-        "recall": 0.12966,
-        "map50": 0.0808,
-        "map50_95": 0.03616
-      },
-      {
-        "epoch": 4,
-        "precision": 0.26255,
-        "recall": 0.14127,
-        "map50": 0.095,
-        "map50_95": 0.04485
-      },
-      {
-        "epoch": 5,
-        "precision": 0.33342,
-        "recall": 0.17159,
-        "map50": 0.12744,
-        "map50_95": 0.06257
-      },
-      {
-        "epoch": 6,
-        "precision": 0.21776,
-        "recall": 0.19337,
-        "map50": 0.14268,
-        "map50_95": 0.0705
-      },
-      {
-        "epoch": 7,
-        "precision": 0.2492,
-        "recall": 0.20535,
-        "map50": 0.15335,
-        "map50_95": 0.07695
-      },
-      {
-        "epoch": 8,
-        "precision": 0.25675,
-        "recall": 0.20954,
-        "map50": 0.1712,
-        "map50_95": 0.08627
-      },
-      {
-        "epoch": 9,
-        "precision": 0.27408,
-        "recall": 0.2206,
-        "map50": 0.17454,
-        "map50_95": 0.08841
-      },
-      {
-        "epoch": 10,
-        "precision": 0.29207,
-        "recall": 0.22072,
-        "map50": 0.17964,
-        "map50_95": 0.09131
-      }
-    ],
-    "best_eval": {
-      "precision": 0.2934005796633022,
-      "recall": 0.22081381256930116,
-      "map50": 0.18021217244545368,
-      "map50_95": 0.0917722728007258
-    },
-    "focus_best_eval": {
-      "pedestrian": {
-        "precision": 0.22093623419553446,
-        "recall": 0.3168249660786974,
-        "map50": 0.1932799463710858,
-        "map50_95": 0.07081631367032457
-      },
-      "people": {
-        "precision": 0.3607192818939377,
-        "recall": 0.18056258921792984,
-        "map50": 0.14440503706431573,
-        "map50_95": 0.04197465258173276
-      }
-    },
-    "focus_map50_95_mean": 0.05639548312602866,
-    "speed_ms_best_eval": {
-      "preprocess": 0.15354727372015362,
-      "inference": 1.3421165182697978,
-      "loss": 0.00048753283249259325,
-      "postprocess": 2.1651021113036495
-    },
-    "local_best_pt": "/home/minh/yoloedge27_experiments/stage22/c12_tslve_n2b_v1_10e/control_n2b_10e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_10e_seed42/weights/best.pt"
+    "status": "pending"
   },
   "candidate_10e": {
     "status": "pending"
@@ -179,7 +69,5 @@
       }
     },
     "note": "context only; NOT used for C12 promotion because epochs differ"
-  },
-  "status": "failed",
-  "error": "AttributeError: 'dict' object has no attribute 'box'"
+  }
 }
