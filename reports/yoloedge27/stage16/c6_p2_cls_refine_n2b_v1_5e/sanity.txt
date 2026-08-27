@@ -1,0 +1,16 @@
+C6 P2-CLS-REFINE N2b SANITY PASSED
+data_yaml=/home/minh/yoloedge27_experiments/stage16/c6_p2_cls_refine_n2b_v1_5e/generated/visdrone_local.yaml
+model_yaml=/home/minh/yoloedge27_experiments/stage16/c6_p2_cls_refine_n2b_v1_5e/generated/model_spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42.yaml
+assigner=TaskAlignedAssigner
+SPR=P4->P5
+neck_nominal=160/256/416
+head=P2ClsDetect reg_max=1
+regression_inputs=stock-P2/stock-P3/stock-P4
+classification_inputs=refined-P2/stock-P3/stock-P4
+p2_cls_refine=DW3x3+PW1x1 residual alpha=0.10
+box_isolation_guard=passed
+params=1456495
+delta_params=2121
+gflops=6.272256
+delta_gflops=0.116736
+inference_graph_change=true_classification_only

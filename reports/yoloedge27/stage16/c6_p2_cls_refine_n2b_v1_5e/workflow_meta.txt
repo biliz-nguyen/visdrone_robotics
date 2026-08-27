@@ -1,0 +1,13 @@
+branch=research/yoloedge27-c6-p2-cls-refine-n2b-v1
+head=71439a9845c86b6bcf02414d1b9b9a6d82aa96f3
+mechanism=P2 classification-only DW3x3+PW1x1 residual refinement
+base=C1 SPR + C2 N2b + direct reg1
+assigner=stock_TAL_exact
+loss=stock
+alpha_init=0.10
+regression_path=stock_P2_P3_P4
+classification_path=refined_P2_stock_P3_P4
+max_params=1500000
+max_gflops=6.30
+epochs=5
+test_dev_used=false
