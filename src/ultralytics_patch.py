@@ -34,6 +34,7 @@ def patch_ultralytics(cfg: dict) -> None:
         project / "src" / "custom_blocks.py": module_dir / "visdrone_custom_blocks.py",
         project / "src" / "p2_refine.py": module_dir / "visdrone_p2_refine.py",
         project / "src" / "p2_cls_head.py": module_dir / "visdrone_p2_cls_head.py",
+        project / "src" / "p2_reg_head.py": module_dir / "visdrone_p2_reg_head.py",
         project / "src" / "rep_neck.py": module_dir / "visdrone_rep_neck.py",
         project / "src" / "stride_reg_head.py": module_dir / "visdrone_stride_reg_head.py",
         project / "src" / "stride_reg_loss.py": utils_dir / "visdrone_stride_reg_loss.py",
@@ -81,6 +82,7 @@ def _patch_tasks(tasks_py: Path) -> None:
         "from ultralytics.nn.modules.visdrone_custom_blocks import SPRDown, AConv, ECA, CoordAtt, ResidualLiteCA",
         "from ultralytics.nn.modules.visdrone_p2_refine import P2Refine",
         "from ultralytics.nn.modules.visdrone_p2_cls_head import P2ClsDetect",
+        "from ultralytics.nn.modules.visdrone_p2_reg_head import P2RegDetect",
         "from ultralytics.nn.modules.visdrone_rep_neck import RepC3k2",
         "from ultralytics.nn.modules.visdrone_stride_reg_head import StrideRegDetect",
     ]
@@ -109,6 +111,9 @@ def _patch_tasks(tasks_py: Path) -> None:
         "        elif m is Concat:\n"
         "            c2 = sum(ch[x] for x in f)\n"
         "        elif m is P2ClsDetect:\n"
+        "            args.extend([end2end, [ch[x] for x in f]])\n"
+        "            m.legacy = legacy\n"
+        "        elif m is P2RegDetect:\n"
         "            args.extend([end2end, [ch[x] for x in f]])\n"
         "            m.legacy = legacy\n"
         "        elif m is StrideRegDetect:\n"
