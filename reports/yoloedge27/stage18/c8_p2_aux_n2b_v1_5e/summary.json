@@ -1,0 +1,134 @@
+{
+  "purpose": "C8 training-only P2 tiny-center auxiliary supervision on frozen N2b; 5e screen only.",
+  "mechanism": {
+    "name": "P2 Tiny Positive Auxiliary Supervision (P2-TPAS)",
+    "changed_scope": "training loss only; existing P2 classification logits",
+    "target": "unique stride-4 center cell for tiny pedestrian/people targets",
+    "tiny_min_side_px": 16.0,
+    "focus_classes": [
+      "pedestrian",
+      "people"
+    ],
+    "aux_weight": 0.1,
+    "aux_loss": "positive-only BCEWithLogits",
+    "negative_auxiliary": false,
+    "main_assigner": "stock TAL exact",
+    "main_loss": "stock box/cls/direct-reg1 loss exact plus auxiliary cls term",
+    "inference_graph_change": false,
+    "deployment_overhead": "0 params / 0 GFLOPs / 0 nodes"
+  },
+  "protocol": {
+    "epochs": 5,
+    "batch": 8,
+    "nbs": 16,
+    "workers": 4,
+    "imgsz": 640,
+    "seed": 42,
+    "pretrained": false,
+    "architecture": "frozen C1 SPR + C2 N2b + stock direct-reg1 Detect",
+    "test_dev_used": false
+  },
+  "control": {
+    "id": "N2b-5e-stock-loss",
+    "best_eval": {
+      "precision": 0.32377698450992576,
+      "recall": 0.19778084383604064,
+      "map50": 0.14413927475479643,
+      "map50_95": 0.0717339895878833
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.13589282226094615,
+        "recall": 0.34882406151062867,
+        "map50": 0.1476392765499091,
+        "map50_95": 0.05142323744247081
+      },
+      "people": {
+        "precision": 0.4033307189496828,
+        "recall": 0.13014634146341464,
+        "map50": 0.1216662127680507,
+        "map50_95": 0.03604498280785341
+      }
+    },
+    "focus_map50_95_mean": 0.04373411012516211,
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    }
+  },
+  "candidate": {
+    "status": "complete",
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    },
+    "epoch5": {
+      "precision": 0.41293,
+      "recall": 0.19932,
+      "map50": 0.13646,
+      "map50_95": 0.06728
+    },
+    "best_eval": {
+      "precision": 0.4125886375186364,
+      "recall": 0.20056380355013098,
+      "map50": 0.1368320189145441,
+      "map50_95": 0.06778222851172033
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.11912890148167458,
+        "recall": 0.3912256897331524,
+        "map50": 0.1495891730497263,
+        "map50_95": 0.047643160432178866
+      },
+      "people": {
+        "precision": 0.24215803730478805,
+        "recall": 0.22439024390243903,
+        "map50": 0.11878545025386775,
+        "map50_95": 0.03175599125895318
+      }
+    },
+    "focus_map50_95_mean": 0.03969957584556602,
+    "speed_ms_best_eval": {
+      "preprocess": 0.15826896350166078,
+      "inference": 1.3239126040100455,
+      "loss": 0.0005027810273226563,
+      "postprocess": 2.7173630146004197
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage18/c8_p2_aux_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.pt"
+  },
+  "comparison": {
+    "delta_candidate_minus_n2b": {
+      "precision": 0.08881165300871063,
+      "recall": 0.002782959714090344,
+      "map50": -0.007307255840252325,
+      "map50_95": -0.003951761076162963
+    },
+    "delta_focus_candidate_minus_n2b": {
+      "pedestrian": {
+        "precision": -0.016763920779271566,
+        "recall": 0.042401628222523746,
+        "map50": 0.0019498964998171942,
+        "map50_95": -0.0037800770102919407
+      },
+      "people": {
+        "precision": -0.16117268164489476,
+        "recall": 0.09424390243902439,
+        "map50": -0.002880762514182955,
+        "map50_95": -0.00428899154890023
+      }
+    },
+    "delta_focus_map50_95_mean": -0.004034534279596089,
+    "same_params": true,
+    "same_gflops": true
+  },
+  "promotion": {
+    "promote_to_50e": false,
+    "rule": "overall mAP50-95 >= N2b; mAP50 loss <=0.1pp; focus mean >= N2b; each focus class no worse by >0.1pp; identical deploy complexity; ONNX pass"
+  },
+  "caution": "single local seed, deterministic=false, 5 epochs only; one locked auxiliary weight, no grid search."
+}
