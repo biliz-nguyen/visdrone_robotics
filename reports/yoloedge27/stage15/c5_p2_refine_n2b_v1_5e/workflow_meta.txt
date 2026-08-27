@@ -1,0 +1,13 @@
+branch=research/yoloedge27-c5-p2-refine-n2b-v1
+head=865714e44d666c8559553b561dfd8382180ae2f6
+mechanism=P2 Detect-input-only DW3x3+PW1x1 residual refinement
+base=C1 SPR + C2 N2b + direct reg1
+assigner=stock_TAL_exact
+loss=stock
+alpha_init=0.10
+p2_path=refined_only_for_detect
+p3_p4_path=stock_N2b
+max_params=1500000
+max_gflops=6.30
+epochs=5
+test_dev_used=false

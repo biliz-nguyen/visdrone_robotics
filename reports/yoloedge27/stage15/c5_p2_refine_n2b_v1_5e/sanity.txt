@@ -1,0 +1,14 @@
+C5 P2-REFINE N2b SANITY PASSED
+data_yaml=/home/minh/yoloedge27_experiments/stage15/c5_p2_refine_n2b_v1_5e/generated/visdrone_local.yaml
+model_yaml=/home/minh/yoloedge27_experiments/stage15/c5_p2_refine_n2b_v1_5e/generated/model_spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42.yaml
+assigner=TaskAlignedAssigner
+SPR=P4->P5
+neck_nominal=160/256/416
+head=Detect reg_max=1
+p2_refine=DW3x3+PW1x1 residual alpha=0.10
+detect_inputs=refined-P2/stock-P3/stock-P4
+params=1456495
+delta_params=2121
+gflops=6.27226
+delta_gflops=0.11674
+inference_graph_change=true
