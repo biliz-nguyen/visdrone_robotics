@@ -48,7 +48,7 @@ jobs:
           grep -q 'p4: 416' config/experiment.yaml
           grep -q 'tiny_min_side: float = 16.0' src/tiny_quality_assigner_sp.py
           grep -q 'beta_floor: float = 5.0' src/tiny_quality_assigner_sp.py
-          grep -q 'stock TAL decides every positive' src/tiny_quality_assigner_sp.py
+          grep -q 'class SelectionPreservingTinyQualityAssigner' src/tiny_quality_assigner_sp.py
           test -f reports/yoloedge27/stage7/neck_realloc_v2_5e/neck_realloc_v2_5e_eval.json
           test -f reports/yoloedge27/stage12/c3_taq_n2b_v1_5e/summary.json
           "$PYTHON_BIN" -m py_compile \
