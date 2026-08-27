@@ -1,0 +1,206 @@
+{
+  "purpose": "C9 quality-aware training-only P2 tiny-center supervision on frozen N2b; 5e screen only.",
+  "mechanism": {
+    "name": "P2 Quality-Tempered Auxiliary Supervision (P2-QTAS)",
+    "changed_scope": "training loss only; existing P2 classification logits",
+    "target": "unique stride-4 center cell for tiny pedestrian/people targets",
+    "quality": "detached IoU of current prediction at the same P2 center cell",
+    "soft_target": "0.5 + 0.5 * sqrt(IoU_detached)",
+    "target_floor": 0.5,
+    "quality_gamma": 0.5,
+    "tiny_min_side_px": 16.0,
+    "focus_classes": [
+      "pedestrian",
+      "people"
+    ],
+    "aux_weight": 0.1,
+    "aux_loss": "BCEWithLogits to quality-aware soft target",
+    "regression_aux_gradient": false,
+    "main_assigner": "stock TAL exact",
+    "main_loss": "stock box/cls/direct-reg1 loss exact plus auxiliary cls term",
+    "inference_graph_change": false,
+    "deployment_overhead": "0 params / 0 GFLOPs / 0 nodes"
+  },
+  "protocol": {
+    "epochs": 5,
+    "batch": 8,
+    "nbs": 16,
+    "workers": 4,
+    "imgsz": 640,
+    "seed": 42,
+    "pretrained": false,
+    "architecture": "frozen C1 SPR + C2 N2b + stock direct-reg1 Detect",
+    "test_dev_used": false
+  },
+  "control": {
+    "id": "N2b-5e-stock-loss",
+    "best_eval": {
+      "precision": 0.32377698450992576,
+      "recall": 0.19778084383604064,
+      "map50": 0.14413927475479643,
+      "map50_95": 0.0717339895878833
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.13589282226094615,
+        "recall": 0.34882406151062867,
+        "map50": 0.1476392765499091,
+        "map50_95": 0.05142323744247081
+      },
+      "people": {
+        "precision": 0.4033307189496828,
+        "recall": 0.13014634146341464,
+        "map50": 0.1216662127680507,
+        "map50_95": 0.03604498280785341
+      }
+    },
+    "focus_map50_95_mean": 0.04373411012516211,
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    }
+  },
+  "c8_reference": {
+    "status": "complete",
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    },
+    "epoch5": {
+      "precision": 0.41293,
+      "recall": 0.19932,
+      "map50": 0.13646,
+      "map50_95": 0.06728
+    },
+    "best_eval": {
+      "precision": 0.4125886375186364,
+      "recall": 0.20056380355013098,
+      "map50": 0.1368320189145441,
+      "map50_95": 0.06778222851172033
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.11912890148167458,
+        "recall": 0.3912256897331524,
+        "map50": 0.1495891730497263,
+        "map50_95": 0.047643160432178866
+      },
+      "people": {
+        "precision": 0.24215803730478805,
+        "recall": 0.22439024390243903,
+        "map50": 0.11878545025386775,
+        "map50_95": 0.03175599125895318
+      }
+    },
+    "focus_map50_95_mean": 0.03969957584556602,
+    "speed_ms_best_eval": {
+      "preprocess": 0.15826896350166078,
+      "inference": 1.3239126040100455,
+      "loss": 0.0005027810273226563,
+      "postprocess": 2.7173630146004197
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage18/c8_p2_aux_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.pt"
+  },
+  "candidate": {
+    "status": "complete",
+    "complexity": {
+      "params": 1454374,
+      "gflops": 6.15552
+    },
+    "epoch5": {
+      "precision": 0.32371,
+      "recall": 0.20699,
+      "map50": 0.14166,
+      "map50_95": 0.06938
+    },
+    "best_eval": {
+      "precision": 0.32571063964428876,
+      "recall": 0.20532528286485915,
+      "map50": 0.14230555100916456,
+      "map50_95": 0.06965461134042435
+    },
+    "focus_best_eval": {
+      "pedestrian": {
+        "precision": 0.13301699952225246,
+        "recall": 0.39111261872455905,
+        "map50": 0.16115617029060922,
+        "map50_95": 0.05313553434963889
+      },
+      "people": {
+        "precision": 0.25127123159491305,
+        "recall": 0.21326829268292682,
+        "map50": 0.11665542714844329,
+        "map50_95": 0.031319773592146674
+      }
+    },
+    "focus_map50_95_mean": 0.04222765397089279,
+    "speed_ms_best_eval": {
+      "preprocess": 0.15887614417275525,
+      "inference": 1.31441101824828,
+      "loss": 0.0005376168037467317,
+      "postprocess": 2.6859726240948403
+    },
+    "onnx_export": {
+      "ok": true,
+      "error": null
+    },
+    "local_best_pt": "/home/minh/yoloedge27_experiments/stage19/c9_p2_qaux_n2b_v1_5e/runs/spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42/weights/best.pt"
+  },
+  "comparison": {
+    "delta_candidate_minus_n2b": {
+      "precision": 0.0019336551343629993,
+      "recall": 0.007544439028818517,
+      "map50": -0.0018337237456318711,
+      "map50_95": -0.002079378247458949
+    },
+    "delta_focus_candidate_minus_n2b": {
+      "pedestrian": {
+        "precision": -0.0028758227386936897,
+        "recall": 0.04228855721393038,
+        "map50": 0.013516893740700114,
+        "map50_95": 0.0017122969071680857
+      },
+      "people": {
+        "precision": -0.15205948735476976,
+        "recall": 0.08312195121951219,
+        "map50": -0.005010785619607411,
+        "map50_95": -0.004725209215706738
+      }
+    },
+    "delta_focus_map50_95_mean": -0.0015064561542693228,
+    "same_params": true,
+    "same_gflops": true
+  },
+  "comparison_vs_c8": {
+    "delta_candidate_minus_c8": {
+      "precision": -0.08687799787434763,
+      "recall": 0.004761479314728173,
+      "map50": 0.0054735320946204535,
+      "map50_95": 0.001872382828704014
+    },
+    "delta_focus_candidate_minus_c8": {
+      "pedestrian": {
+        "precision": 0.013888098040577876,
+        "recall": -0.00011307100859336838,
+        "map50": 0.01156699724088292,
+        "map50_95": 0.005492373917460026
+      },
+      "people": {
+        "precision": 0.009113194290124998,
+        "recall": -0.011121951219512205,
+        "map50": -0.0021300231054244556,
+        "map50_95": -0.0004362176668065085
+      }
+    },
+    "delta_focus_map50_95_mean": 0.002528078125326766
+  },
+  "promotion": {
+    "promote_to_50e": false,
+    "rule": "overall mAP50-95 >= N2b; mAP50 loss <=0.1pp; focus mean >= N2b; each focus class no worse by >0.1pp; identical deploy complexity; ONNX pass"
+  },
+  "caution": "single local seed, deterministic=false, 5 epochs only; C9 target mapping locked before run, no grid search."
+}

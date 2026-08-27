@@ -1,0 +1,17 @@
+branch=research/yoloedge27-c9-p2-qaux-n2b-v1
+head=83883b07cd67ac17f492f104de28d38e1b21fcbd
+mechanism=training-only P2 IoU-quality-tempered tiny-center supervision
+base=C1 SPR + C2 N2b + stock direct reg1 Detect
+assigner=stock_TAL_exact
+main_loss=stock
+focus_classes=pedestrian_people
+tiny_min_side=16px
+soft_target=0.5+0.5*sqrt(detached_IoU)
+target_floor=0.50
+quality_gamma=0.50
+aux_weight=0.10
+regression_aux_gradient=false
+deployment_overhead_params=0
+deployment_overhead_gflops=0
+epochs=5
+test_dev_used=false

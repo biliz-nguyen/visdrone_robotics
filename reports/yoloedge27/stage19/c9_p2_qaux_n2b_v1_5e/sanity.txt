@@ -1,0 +1,21 @@
+C9 P2 QUALITY-AUX N2b SANITY PASSED
+data_yaml=/home/minh/yoloedge27_experiments/stage19/c9_p2_qaux_n2b_v1_5e/generated/visdrone_local.yaml
+model_yaml=/home/minh/yoloedge27_experiments/stage19/c9_p2_qaux_n2b_v1_5e/generated/model_spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_5e_seed42.yaml
+criterion=P2QualityAuxDetectionLoss
+assigner=TaskAlignedAssigner
+SPR=P4->P5
+neck_nominal=160/256/416
+head=stock Detect reg_max=1
+aux=P2 tiny-center IoU-tempered BCE
+soft_target=0.5+0.5*sqrt(detached_IoU)
+focus_classes=pedestrian(5),people(6)
+tiny_min_side=16px
+aux_weight=0.10
+aux_gradient=P2 classification only; box-head untouched
+sanity_quality_mean=0.172423
+sanity_target_mean=0.705788
+params=1454374
+gflops=6.15552
+deployment_overhead_params=0
+deployment_overhead_gflops=0
+inference_graph_change=false
