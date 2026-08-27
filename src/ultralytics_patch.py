@@ -30,13 +30,20 @@ def patch_ultralytics(cfg: dict) -> None:
     )
 
     c8_aux_mode = cfg.get("c8_aux_mode", "standard")
+    c9_aux_mode = cfg.get("c9_aux_mode", "standard")
     if c8_aux_mode not in {"standard", "tiny_center"}:
         raise ValueError(f"Unsupported c8_aux_mode={c8_aux_mode!r}")
-    if c8_aux_mode == "tiny_center":
+    if c9_aux_mode not in {"standard", "quality_center"}:
+        raise ValueError(f"Unsupported c9_aux_mode={c9_aux_mode!r}")
+    if c8_aux_mode != "standard" and c9_aux_mode != "standard":
+        raise ValueError("C8 and C9 auxiliary modes are mutually exclusive")
+
+    aux_active = c8_aux_mode != "standard" or c9_aux_mode != "standard"
+    if aux_active:
         if any(bool(cfg.get(k, False)) for k in ("c5_p2_refine", "c6_p2_cls_refine", "c7_p2_reg_refine")):
-            raise ValueError("C8 auxiliary supervision is locked to the frozen stock N2b head")
+            raise ValueError("C8/C9 auxiliary supervision is locked to the frozen stock N2b head")
         if int(cfg.get("reg_max", 1)) != 1:
-            raise ValueError("C8 auxiliary supervision is locked to direct reg_max=1")
+            raise ValueError("C8/C9 auxiliary supervision is locked to direct reg_max=1")
 
     project = Path(cfg["project_root"])
     copies = {
@@ -48,6 +55,7 @@ def patch_ultralytics(cfg: dict) -> None:
         project / "src" / "stride_reg_head.py": module_dir / "visdrone_stride_reg_head.py",
         project / "src" / "stride_reg_loss.py": utils_dir / "visdrone_stride_reg_loss.py",
         project / "src" / "p2_aux_loss.py": utils_dir / "visdrone_p2_aux_loss.py",
+        project / "src" / "p2_quality_aux_loss.py": utils_dir / "visdrone_p2_quality_aux_loss.py",
     }
     for src, dst in copies.items():
         shutil.copy2(src, dst)
@@ -139,7 +147,19 @@ def _patch_tasks(tasks_py: Path, cfg: dict) -> None:
         "        return E2ELoss(self) if getattr(self, \"end2end\", False) else v8DetectionLoss(self)\n"
     )
 
-    if cfg.get("c8_aux_mode", "standard") == "tiny_center":
+    if cfg.get("c9_aux_mode", "standard") == "quality_center":
+        criterion_new = (
+            "    def init_criterion(self):\n"
+            "        \"\"\"Initialize the loss criterion for the DetectionModel.\"\"\"\n"
+            "        if self.model[-1].__class__.__name__ == \"StrideRegDetect\":\n"
+            "            from ultralytics.utils.visdrone_stride_reg_loss import StrideRegDetectionLoss\n"
+            "            return StrideRegDetectionLoss(self)\n"
+            "        if getattr(self, \"end2end\", False):\n"
+            "            return E2ELoss(self)\n"
+            "        from ultralytics.utils.visdrone_p2_quality_aux_loss import P2QualityAuxDetectionLoss\n"
+            "        return P2QualityAuxDetectionLoss(self, tiny_min_side=16.0, aux_weight=0.10, focus_classes=(5, 6), target_floor=0.50, quality_gamma=0.50)\n"
+        )
+    elif cfg.get("c8_aux_mode", "standard") == "tiny_center":
         criterion_new = (
             "    def init_criterion(self):\n"
             "        \"\"\"Initialize the loss criterion for the DetectionModel.\"\"\"\n"
