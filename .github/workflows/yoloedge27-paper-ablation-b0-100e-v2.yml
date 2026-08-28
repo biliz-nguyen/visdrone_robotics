@@ -48,7 +48,7 @@ jobs:
           echo "HEAD=$(git rev-parse HEAD)"
           grep -q 'ultralytics_tag: "v8.4.56"' config/experiment.yaml
           grep -q 'edge27_place_b0:' config/experiment.yaml
-          grep -q 'a0_baseline' scripts/run_paper_ablation_phase_100e.py
+          grep -q 'base.VARIANTS' scripts/run_paper_ablation_phase_100e.py
           grep -q 'exactly 100 epochs' scripts/run_paper_ablation_phase_100e.py
           "$PYTHON_BIN" -m py_compile scripts/run_paper_ablation_phase_50e.py scripts/run_paper_ablation_phase_100e.py
 
