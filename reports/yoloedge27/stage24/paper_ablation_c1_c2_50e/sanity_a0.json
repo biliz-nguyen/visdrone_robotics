@@ -1,0 +1,32 @@
+{
+  "id": "A0",
+  "label": "Baseline",
+  "preset": "edge27_place_b0",
+  "criterion": "v8DetectionLoss",
+  "assigner": "TaskAlignedAssigner",
+  "head": "Detect",
+  "reg_max": 16,
+  "strides": [
+    4,
+    8,
+    16
+  ],
+  "feature_indices": [
+    19,
+    22,
+    25
+  ],
+  "p4_p5_downsample": "Conv",
+  "spr_count": 0,
+  "aconv_count": 0,
+  "neck_effective": {
+    "p2": 32,
+    "p3": 64,
+    "p4": 128
+  },
+  "params": 1996350,
+  "gflops": 10.1206016,
+  "data_yaml": "/home/minh/yoloedge27_experiments/stage24/paper_ablation_c1_c2_50e/a0_baseline/generated/visdrone_local.yaml",
+  "model_yaml": "/home/minh/yoloedge27_experiments/stage24/paper_ablation_c1_c2_50e/a0_baseline/generated/model_conv_reg16_standard_attn-none_50e_seed42.yaml",
+  "test_dev_used": false
+}

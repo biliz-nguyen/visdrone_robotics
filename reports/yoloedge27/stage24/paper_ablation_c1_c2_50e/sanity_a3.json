@@ -1,0 +1,32 @@
+{
+  "id": "A3",
+  "label": "+Neck Reallocation (Final)",
+  "preset": "edge27_neck_realloc_v2",
+  "criterion": "v8DetectionLoss",
+  "assigner": "TaskAlignedAssigner",
+  "head": "Detect",
+  "reg_max": 1,
+  "strides": [
+    4,
+    8,
+    16
+  ],
+  "feature_indices": [
+    19,
+    22,
+    25
+  ],
+  "p4_p5_downsample": "SPRDown",
+  "spr_count": 1,
+  "aconv_count": 0,
+  "neck_effective": {
+    "p2": 40,
+    "p3": 64,
+    "p4": 104
+  },
+  "params": 1454374,
+  "gflops": 6.15552,
+  "data_yaml": "/home/minh/yoloedge27_experiments/stage24/paper_ablation_c1_c2_50e/a3_final_n2b/generated/visdrone_local.yaml",
+  "model_yaml": "/home/minh/yoloedge27_experiments/stage24/paper_ablation_c1_c2_50e/a3_final_n2b/generated/model_spr-p4p5_realloc-160-256-416_direct-r1_standard_attn-none_50e_seed42.yaml",
+  "test_dev_used": false
+}

@@ -1,0 +1,16 @@
+branch=research/yoloedge27-paper-ablation-c1-c2-50e
+head=4ebb0fb314e411048ae122c6f1a67bbfcce27e85
+paper_scope=C1_SPR+C2_neck_reallocation
+AConv=false
+C12=false
+design=sequential_one_factor_per_row
+A0=Conv_standard_neck_reg16
+A1=A0_plus_SPR_P4_P5
+A2=A1_plus_direct_reg1
+A3=A2_plus_N2b_reallocation_160_256_416
+epochs_each=50
+seed=42
+pretrained=false
+assigner=stock_TAL
+loss=stock_v8DetectionLoss
+test_dev_used=false
