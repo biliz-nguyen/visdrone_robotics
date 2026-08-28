@@ -1,0 +1,12 @@
+branch=research/yoloedge27-paper-ablation-100e
+head=12fba3b55eabcd5b890db538ad4962cf4410942e
+run_scope=B0_only
+B0=Conv_standard_neck_reg16
+epochs=100
+seed=42
+pretrained=false
+AConv=false
+C12=false
+assigner=stock_TAL
+loss=stock_v8DetectionLoss
+test_dev_used=false
