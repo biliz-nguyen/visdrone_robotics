@@ -1,0 +1,408 @@
+{
+  "status": "complete",
+  "id": "A2",
+  "label": "+Direct-R1",
+  "change": "A1 + direct reg_max=1 deployment head",
+  "preset": "edge27_head_direct_r1",
+  "epochs": 50,
+  "complexity": {
+    "params": 1523322,
+    "gflops": 6.0500992
+  },
+  "epoch10": {
+    "precision": 0.30318,
+    "recall": 0.23727,
+    "map50": 0.19488,
+    "map50_95": 0.10114
+  },
+  "epoch50": {
+    "precision": 0.4085,
+    "recall": 0.31351,
+    "map50": 0.29156,
+    "map50_95": 0.16255
+  },
+  "metric_trajectory": [
+    {
+      "epoch": 1,
+      "precision": 0.03404,
+      "recall": 0.14008,
+      "map50": 0.0328,
+      "map50_95": 0.0138
+    },
+    {
+      "epoch": 2,
+      "precision": 0.43269,
+      "recall": 0.12748,
+      "map50": 0.0714,
+      "map50_95": 0.032
+    },
+    {
+      "epoch": 3,
+      "precision": 0.22862,
+      "recall": 0.1409,
+      "map50": 0.07728,
+      "map50_95": 0.03694
+    },
+    {
+      "epoch": 4,
+      "precision": 0.38477,
+      "recall": 0.1714,
+      "map50": 0.11768,
+      "map50_95": 0.05673
+    },
+    {
+      "epoch": 5,
+      "precision": 0.2144,
+      "recall": 0.1825,
+      "map50": 0.1328,
+      "map50_95": 0.0647
+    },
+    {
+      "epoch": 6,
+      "precision": 0.21994,
+      "recall": 0.20483,
+      "map50": 0.14304,
+      "map50_95": 0.07216
+    },
+    {
+      "epoch": 7,
+      "precision": 0.33795,
+      "recall": 0.22145,
+      "map50": 0.15557,
+      "map50_95": 0.07867
+    },
+    {
+      "epoch": 8,
+      "precision": 0.37563,
+      "recall": 0.21796,
+      "map50": 0.1733,
+      "map50_95": 0.08916
+    },
+    {
+      "epoch": 9,
+      "precision": 0.29034,
+      "recall": 0.23564,
+      "map50": 0.19482,
+      "map50_95": 0.09999
+    },
+    {
+      "epoch": 10,
+      "precision": 0.30318,
+      "recall": 0.23727,
+      "map50": 0.19488,
+      "map50_95": 0.10114
+    },
+    {
+      "epoch": 11,
+      "precision": 0.3449,
+      "recall": 0.23751,
+      "map50": 0.20472,
+      "map50_95": 0.10593
+    },
+    {
+      "epoch": 12,
+      "precision": 0.36956,
+      "recall": 0.24332,
+      "map50": 0.21089,
+      "map50_95": 0.11184
+    },
+    {
+      "epoch": 13,
+      "precision": 0.32927,
+      "recall": 0.2582,
+      "map50": 0.21933,
+      "map50_95": 0.1163
+    },
+    {
+      "epoch": 14,
+      "precision": 0.34176,
+      "recall": 0.26802,
+      "map50": 0.23035,
+      "map50_95": 0.12376
+    },
+    {
+      "epoch": 15,
+      "precision": 0.35488,
+      "recall": 0.2622,
+      "map50": 0.23744,
+      "map50_95": 0.12926
+    },
+    {
+      "epoch": 16,
+      "precision": 0.37699,
+      "recall": 0.26264,
+      "map50": 0.24074,
+      "map50_95": 0.12963
+    },
+    {
+      "epoch": 17,
+      "precision": 0.37176,
+      "recall": 0.27235,
+      "map50": 0.24847,
+      "map50_95": 0.13486
+    },
+    {
+      "epoch": 18,
+      "precision": 0.36146,
+      "recall": 0.27286,
+      "map50": 0.24896,
+      "map50_95": 0.1361
+    },
+    {
+      "epoch": 19,
+      "precision": 0.3748,
+      "recall": 0.28322,
+      "map50": 0.2546,
+      "map50_95": 0.13833
+    },
+    {
+      "epoch": 20,
+      "precision": 0.3833,
+      "recall": 0.28339,
+      "map50": 0.25515,
+      "map50_95": 0.13879
+    },
+    {
+      "epoch": 21,
+      "precision": 0.36621,
+      "recall": 0.29005,
+      "map50": 0.26158,
+      "map50_95": 0.14434
+    },
+    {
+      "epoch": 22,
+      "precision": 0.38639,
+      "recall": 0.28633,
+      "map50": 0.26331,
+      "map50_95": 0.14459
+    },
+    {
+      "epoch": 23,
+      "precision": 0.38617,
+      "recall": 0.28806,
+      "map50": 0.26613,
+      "map50_95": 0.14667
+    },
+    {
+      "epoch": 24,
+      "precision": 0.38417,
+      "recall": 0.28984,
+      "map50": 0.27093,
+      "map50_95": 0.15001
+    },
+    {
+      "epoch": 25,
+      "precision": 0.39193,
+      "recall": 0.29611,
+      "map50": 0.27217,
+      "map50_95": 0.15116
+    },
+    {
+      "epoch": 26,
+      "precision": 0.38959,
+      "recall": 0.29374,
+      "map50": 0.2727,
+      "map50_95": 0.15139
+    },
+    {
+      "epoch": 27,
+      "precision": 0.39424,
+      "recall": 0.29587,
+      "map50": 0.27677,
+      "map50_95": 0.15347
+    },
+    {
+      "epoch": 28,
+      "precision": 0.39402,
+      "recall": 0.29817,
+      "map50": 0.27741,
+      "map50_95": 0.15387
+    },
+    {
+      "epoch": 29,
+      "precision": 0.39794,
+      "recall": 0.29634,
+      "map50": 0.27942,
+      "map50_95": 0.15543
+    },
+    {
+      "epoch": 30,
+      "precision": 0.39283,
+      "recall": 0.30134,
+      "map50": 0.28104,
+      "map50_95": 0.15601
+    },
+    {
+      "epoch": 31,
+      "precision": 0.39792,
+      "recall": 0.30337,
+      "map50": 0.282,
+      "map50_95": 0.15685
+    },
+    {
+      "epoch": 32,
+      "precision": 0.39892,
+      "recall": 0.30603,
+      "map50": 0.28268,
+      "map50_95": 0.1577
+    },
+    {
+      "epoch": 33,
+      "precision": 0.3999,
+      "recall": 0.30579,
+      "map50": 0.28365,
+      "map50_95": 0.15852
+    },
+    {
+      "epoch": 34,
+      "precision": 0.39715,
+      "recall": 0.30921,
+      "map50": 0.28529,
+      "map50_95": 0.15879
+    },
+    {
+      "epoch": 35,
+      "precision": 0.40185,
+      "recall": 0.30767,
+      "map50": 0.28573,
+      "map50_95": 0.15929
+    },
+    {
+      "epoch": 36,
+      "precision": 0.40334,
+      "recall": 0.30858,
+      "map50": 0.28656,
+      "map50_95": 0.15977
+    },
+    {
+      "epoch": 37,
+      "precision": 0.40588,
+      "recall": 0.30866,
+      "map50": 0.28734,
+      "map50_95": 0.15998
+    },
+    {
+      "epoch": 38,
+      "precision": 0.40526,
+      "recall": 0.31132,
+      "map50": 0.28792,
+      "map50_95": 0.16038
+    },
+    {
+      "epoch": 39,
+      "precision": 0.40417,
+      "recall": 0.31179,
+      "map50": 0.28855,
+      "map50_95": 0.16076
+    },
+    {
+      "epoch": 40,
+      "precision": 0.40549,
+      "recall": 0.31124,
+      "map50": 0.28879,
+      "map50_95": 0.16061
+    },
+    {
+      "epoch": 41,
+      "precision": 0.40281,
+      "recall": 0.31289,
+      "map50": 0.28905,
+      "map50_95": 0.16086
+    },
+    {
+      "epoch": 42,
+      "precision": 0.40333,
+      "recall": 0.31261,
+      "map50": 0.28944,
+      "map50_95": 0.16123
+    },
+    {
+      "epoch": 43,
+      "precision": 0.40322,
+      "recall": 0.31206,
+      "map50": 0.28998,
+      "map50_95": 0.16136
+    },
+    {
+      "epoch": 44,
+      "precision": 0.40349,
+      "recall": 0.31215,
+      "map50": 0.29009,
+      "map50_95": 0.16139
+    },
+    {
+      "epoch": 45,
+      "precision": 0.40351,
+      "recall": 0.3131,
+      "map50": 0.29033,
+      "map50_95": 0.16156
+    },
+    {
+      "epoch": 46,
+      "precision": 0.4007,
+      "recall": 0.31449,
+      "map50": 0.2906,
+      "map50_95": 0.16197
+    },
+    {
+      "epoch": 47,
+      "precision": 0.40276,
+      "recall": 0.31437,
+      "map50": 0.29092,
+      "map50_95": 0.16198
+    },
+    {
+      "epoch": 48,
+      "precision": 0.4017,
+      "recall": 0.31466,
+      "map50": 0.29117,
+      "map50_95": 0.16229
+    },
+    {
+      "epoch": 49,
+      "precision": 0.40706,
+      "recall": 0.31371,
+      "map50": 0.29134,
+      "map50_95": 0.16259
+    },
+    {
+      "epoch": 50,
+      "precision": 0.4085,
+      "recall": 0.31351,
+      "map50": 0.29156,
+      "map50_95": 0.16255
+    }
+  ],
+  "best_eval": {
+    "precision": 0.4085669479313488,
+    "recall": 0.3141590653941518,
+    "map50": 0.29238662777942326,
+    "map50_95": 0.1630083431717712
+  },
+  "focus_best_eval": {
+    "pedestrian": {
+      "precision": 0.38769867216132786,
+      "recall": 0.4030981456354591,
+      "map50": 0.3481850060674092,
+      "map50_95": 0.1452772838020085
+    },
+    "people": {
+      "precision": 0.45260574381117613,
+      "recall": 0.2735609756097561,
+      "map50": 0.26784071600765186,
+      "map50_95": 0.09560742121454655
+    }
+  },
+  "focus_map50_95_mean": 0.12044235250827752,
+  "speed_ms_best_eval": {
+    "preprocess": 0.14581535401371218,
+    "inference": 1.157522249996893,
+    "loss": 0.0004428302915989893,
+    "postprocess": 1.2926796240759213
+  },
+  "onnx_export": {
+    "ok": true,
+    "error": null
+  },
+  "local_best_pt": "/home/minh/yoloedge27_experiments/stage24/paper_ablation_c1_c2_50e/a2_spr_r1/runs/spr-p4p5_direct-r1_standard_attn-none_50e_seed42/weights/best.pt"
+}
