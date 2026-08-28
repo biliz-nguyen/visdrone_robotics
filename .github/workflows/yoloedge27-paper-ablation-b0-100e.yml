@@ -1,0 +1,152 @@
+name: YOLOEdge27 Paper Ablation B0 Baseline 100e
+
+on:
+  push:
+    branches:
+      - research/yoloedge27-paper-ablation-100e
+    paths:
+      - '.github/workflows/yoloedge27-paper-ablation-b0-100e.yml'
+      - 'scripts/run_paper_ablation_phase_50e.py'
+      - 'src/model_builder.py'
+      - 'src/config.py'
+      - 'scripts/train.py'
+      - 'scripts/eval_screening.py'
+      - 'scripts/export.py'
+  workflow_dispatch:
+
+concurrency:
+  group: yoloedge27-paper-ablation-b0-100e
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  b0-baseline-reg16-100e:
+    runs-on: [self-hosted, Linux, X64, gpu, rtx4060ti, visdrone]
+    timeout-minutes: 1440
+    env:
+      CUDA_VISIBLE_DEVICES: "0"
+      PYTHON_BIN: /home/minh/miniconda3/envs/torch251/bin/python
+      DATASET: /home/minh/Desktop/project/visdrone_local_project/dataset
+      SCREEN_ROOT: /home/minh/yoloedge27_experiments/stage25/paper_ablation_100e
+      REPORT_DIR: reports/yoloedge27/stage25/paper_ablation_100e
+      PYTHONPATH: ${{ github.workspace }}/third_party/ultralytics:${{ github.workspace }}
+
+    steps:
+      - name: Checkout paper 100e branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/yoloedge27-paper-ablation-100e
+          fetch-depth: 0
+
+      - name: Verify B0-only scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "HEAD=$(git rev-parse HEAD)"
+          grep -q 'ultralytics_tag: "v8.4.56"' config/experiment.yaml
+          grep -q 'edge27_place_b0:' config/experiment.yaml
+          grep -q 'a0_baseline' scripts/run_paper_ablation_phase_50e.py
+          grep -q 'AConv=false C12=false' scripts/run_paper_ablation_phase_50e.py
+          "$PYTHON_BIN" -m py_compile scripts/run_paper_ablation_phase_50e.py
+
+      - name: Pre-flight GPU and dataset
+        shell: bash
+        run: |
+          set -euo pipefail
+          nvidia-smi
+          "$PYTHON_BIN" - <<'PY'
+          import torch
+          print('Torch:', torch.__version__)
+          print('CUDA:', torch.version.cuda)
+          assert torch.cuda.is_available()
+          print('GPU:', torch.cuda.get_device_name(0))
+          PY
+          test -d "$DATASET/VisDrone2019-DET-train/images"
+          test -d "$DATASET/VisDrone2019-DET-val/images"
+
+      - name: Bootstrap local config
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$SCREEN_ROOT/a0_baseline"
+          mkdir -p "$SCREEN_ROOT" "$REPORT_DIR"
+          cat > config/local.yaml <<EOF
+          dataset_root: "$DATASET"
+          dataset_format: "visdrone_official"
+          train_images: "VisDrone2019-DET-train/images"
+          train_annotations: "VisDrone2019-DET-train/annotations"
+          val_images: "VisDrone2019-DET-val/images"
+          val_annotations: "VisDrone2019-DET-val/annotations"
+          test_images: "VisDrone2019-DET-test-dev/images"
+          test_annotations: "VisDrone2019-DET-test-dev/annotations"
+          test_image: ""
+          runs_dir: "$SCREEN_ROOT/bootstrap/runs"
+          state_dir: "$SCREEN_ROOT/bootstrap/state"
+          outputs_dir: "$SCREEN_ROOT/bootstrap/outputs"
+          generated_dir: "$SCREEN_ROOT/bootstrap/generated"
+          EOF
+
+      - name: Setup pinned dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON_BIN="$PYTHON_BIN" bash setup_local.sh
+
+      - name: Preflight B0 baseline reg16 100e
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/run_paper_ablation_phase_50e.py \
+            --variant a0_baseline \
+            --dataset "$DATASET" \
+            --screen-root "$SCREEN_ROOT" \
+            --report-dir "$REPORT_DIR" \
+            --epochs 100 --batch 8 --nbs 16 --workers 4 \
+            --preflight-only
+
+      - name: Train B0 baseline Conv standard-neck reg16 100e
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" scripts/run_paper_ablation_phase_50e.py \
+            --variant a0_baseline \
+            --dataset "$DATASET" \
+            --screen-root "$SCREEN_ROOT" \
+            --report-dir "$REPORT_DIR" \
+            --epochs 100 --batch 8 --nbs 16 --workers 4
+
+      - name: Commit B0 100e report
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$REPORT_DIR"
+          {
+            echo "branch=research/yoloedge27-paper-ablation-100e"
+            echo "head=$(git rev-parse HEAD)"
+            echo "run_scope=B0_only"
+            echo "B0=Conv_standard_neck_reg16"
+            echo "epochs=100"
+            echo "seed=42"
+            echo "pretrained=false"
+            echo "AConv=false"
+            echo "C12=false"
+            echo "assigner=stock_TAL"
+            echo "loss=stock_v8DetectionLoss"
+            echo "test_dev_used=false"
+          } > "$REPORT_DIR/b0_workflow_meta.txt"
+
+          git checkout -- config/experiment.yaml || true
+          rm -f config/local.yaml
+          git config user.name "yoloedge27-runner"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$REPORT_DIR"
+          if git diff --cached --quiet; then
+            echo "No B0 100e report changes to commit"
+            exit 0
+          fi
+          git commit -m "Record B0 baseline paper ablation 100e"
+          git pull --rebase origin research/yoloedge27-paper-ablation-100e
+          git push origin HEAD:research/yoloedge27-paper-ablation-100e
