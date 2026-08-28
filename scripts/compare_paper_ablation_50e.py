@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Aggregate the four 50e paper ablation phases into paper-ready tables."""
+"""Aggregate the four 50e paper ablation phases into paper-ready JSON/CSV."""
 
 from __future__ import annotations
 
@@ -26,10 +26,6 @@ def delta(a: dict, b: dict) -> dict:
 
 def focus_delta(a: dict, b: dict) -> dict:
     return {cls: delta(a[cls], b[cls]) for cls in FOCUS}
-
-
-def fmt_pct(x: float) -> str:
-    return f"{100.0 * x:.3f}"
 
 
 def main():
@@ -119,23 +115,6 @@ def main():
                 f"{float(r.get('speed_ms_best_eval', {}).get('inference', 0.0)):.6f}",
                 "PASS" if r.get("onnx_export", {}).get("ok") else "FAIL",
             ])
-
-    tex_lines = [
-        r"\\begin{tabular}{lrrrrrrr}",
-        r"\\toprule",
-        r"ID & Params & GFLOPs & mAP$_{50}$ & mAP$_{50:95}$ & Ped. AP & People AP & Focus AP \\\",
-        r"\\midrule",
-    ]
-    for r in rows:
-        tex_lines.append(
-            f"{r['id']} & {int(r['complexity']['params'])/1e6:.3f}M & {r['complexity']['gflops']:.3f} & "
-            f"{fmt_pct(r['best_eval']['map50'])} & {fmt_pct(r['best_eval']['map50_95'])} & "
-            f"{fmt_pct(r['focus_best_eval']['pedestrian']['map50_95'])} & "
-            f"{fmt_pct(r['focus_best_eval']['people']['map50_95'])} & "
-            f"{fmt_pct(r['focus_map50_95_mean'])} \\\\" 
-        )
-    tex_lines.extend([r"\\bottomrule", r"\\end{tabular}"])
-    (report_dir / "paper_ablation_table.tex").write_text("\n".join(tex_lines) + "\n", encoding="utf-8")
 
     print("PAPER_ABLATION_COMPARISON_COMPLETE")
     print(json.dumps({
